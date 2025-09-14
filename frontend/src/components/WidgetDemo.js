@@ -66,13 +66,22 @@ const WidgetDemo = () => {
 
   const handleAuth = async (e) => {
     e.preventDefault();
-    if (authMode === 'register') {
-      try {
-        await register(username, email, 'employee');
-        setIsLoggedIn(true);
-      } catch (error) {
-        console.error('Registration failed:', error);
-      }
+    if (!username.trim() || !email.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('Attempting registration with:', { username, email });
+      await register(username, email, 'employee');
+      setIsLoggedIn(true);
+      console.log('Registration successful');
+    } catch (error) {
+      console.error('Registration failed:', error);
+      toast.error(error.response?.data?.detail || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
