@@ -24,7 +24,7 @@ const WidgetDemo = () => {
   const [loading, setLoading] = useState(false);
   
   // Auth state
-  const [authMode, setAuthMode] = useState('login');
+  const [authMode, setAuthMode] = useState('register');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   
