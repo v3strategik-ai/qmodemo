@@ -140,6 +140,20 @@ const Landing = () => {
             <p className="text-sm text-gray-500 font-mono">
               Intelligent agents that actually act as employees • Next-gen AI/ML • White-label enterprise versions
             </p>
+            
+            {/* Admin Access */}
+            <div className="mt-8 pt-8 border-t border-gray-700">
+              <p className="text-xs text-gray-500 mb-2">Beta Testing Access:</p>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/admin')}
+                className="text-gray-500 hover:text-blue-400 text-xs"
+              >
+                <Settings className="w-3 h-3 mr-1" />
+                Admin Portal
+              </Button>
+            </div>
           </div>
         </div>
       </div>
