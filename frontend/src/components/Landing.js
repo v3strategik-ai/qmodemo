@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { ArrowRight, Bot, Zap, Shield, Globe, Brain, Sparkles, Rocket, Target, Users } from 'lucide-react';
+import { ArrowRight, Bot, Zap, Shield, Globe, Brain, Sparkles, Rocket, Target, Users, Settings } from 'lucide-react';
 
 const Landing = () => {
   const navigate = useNavigate();
