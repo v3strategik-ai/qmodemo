@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import Landing from "./components/Landing";
 import WidgetDemo from "./components/WidgetDemo";
 import Dashboard from "./components/Dashboard";
+import AdminPortal from "./components/AdminPortal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
