@@ -24,6 +24,7 @@ const WidgetDemo = () => {
   const [activeTab, setActiveTab] = useState('chat');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Auth state
   const [authMode, setAuthMode] = useState('register');
