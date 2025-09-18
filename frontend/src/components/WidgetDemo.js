@@ -122,7 +122,12 @@ const WidgetDemo = () => {
       const response = await axios.get(`${API}/knowledge-base/${currentUser.id}`);
       setKnowledgeItems(response.data);
     } catch (error) {
-      console.error('Failed to load knowledge base:', error);
+      if (error.response?.status === 404) {
+        // No knowledge base items yet, that's fine
+        console.log('No knowledge base items found');
+      } else {
+        console.error('Failed to load knowledge base:', error);
+      }
     }
   };
 
