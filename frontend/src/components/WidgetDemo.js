@@ -305,9 +305,9 @@ const WidgetDemo = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Chat Tab */}
+                {/* Chat Tab */}
             <TabsContent value="chat" className="mt-6">
-              <Card className="holographic h-[600px] flex flex-col">
+              <Card className="holographic h-[600px] flex flex-col ai-chat-container">
                 <div className="p-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
@@ -338,8 +338,14 @@ const WidgetDemo = () => {
                       </div>
                       {message.response && (
                         <div className="flex justify-start">
-                          <div className="glass p-3 rounded-lg max-w-xs">
+                          <div className="glass p-3 rounded-lg max-w-xs space-y-3">
                             <p className="text-gray-200">{message.response}</p>
+                            <AIResponseRating 
+                              messageId={message.id} 
+                              onRate={(messageId, rating, feedback) => {
+                                console.log('Message rated:', messageId, rating, feedback);
+                              }}
+                            />
                           </div>
                         </div>
                       )}
