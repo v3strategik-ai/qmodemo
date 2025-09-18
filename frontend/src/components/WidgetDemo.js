@@ -108,8 +108,12 @@ const WidgetDemo = () => {
       const response = await axios.get(`${API}/widget/config/${currentUser.id}`);
       setConfig(response.data);
     } catch (error) {
-      // Config doesn't exist yet, that's fine
-      console.log('No config found, using defaults');
+      if (error.response?.status === 404) {
+        // Config doesn't exist yet, that's fine - use defaults
+        console.log('No config found, using defaults');
+      } else {
+        console.error('Failed to load config:', error);
+      }
     }
   };
 
