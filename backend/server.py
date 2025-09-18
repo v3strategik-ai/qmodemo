@@ -38,7 +38,7 @@ class StatusCheckCreate(BaseModel):
 class UserCreate(BaseModel):
     username: str
     email: str
-    role: str = "employee"  # admin or employee
+    role: str = "employee"
 
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -46,6 +46,7 @@ class User(BaseModel):
     email: str
     role: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_demo: bool = False
 
 class ChatMessage(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -53,10 +54,22 @@ class ChatMessage(BaseModel):
     message: str
     response: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    rating: Optional[str] = None
+    feedback: Optional[str] = None
 
 class ChatRequest(BaseModel):
     user_id: str
     message: str
+
+class ChatRating(BaseModel):
+    message_id: str
+    rating: str  # 'helpful' or 'not_helpful'
+    feedback: Optional[str] = None
+
+class ChatFeedback(BaseModel):
+    message_id: str
+    rating: str
+    feedback: str
 
 class WidgetConfig(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -146,7 +159,10 @@ async def chat_with_ai(chat_request: ChatRequest):
         # Get user config for context
         user_config = await db.widget_configs.find_one({"user_id": chat_request.user_id})
         
-        # Build system message based on config
+        # Get user's knowledge base
+        kb_items = await db.knowledge_base.find({"user_id": chat_request.user_id}).to_list(100)
+        
+        # Build system message based on config and knowledge base
         system_message = f"""You are modQ - a Modular Quantum Business Intelligence assistant. You are an ultra-intelligent AI agent that acts as a personal assistant, regional manager, and CEO all in one.
 
 Your capabilities include:
@@ -155,6 +171,8 @@ Your capabilities include:
 - Offering strategic recommendations
 - Analyzing data and trends
 - Managing tasks and projects
+- Creating business reports and frameworks
+- Optimizing operations and efficiency
 
 """
         
@@ -166,6 +184,15 @@ AI Personality: {user_config.get('ai_personality', 'Professional Assistant')}
 
 Available Automations: {', '.join(user_config.get('workflow_automations', []))}
 """
+
+        if kb_items:
+            system_message += f"""
+Company Knowledge Base:
+{chr(10).join([f"- {item['title']}: {item['content'][:200]}..." for item in kb_items])}
+"""
+
+        system_message += """
+Provide practical, actionable advice. Be specific and include metrics, frameworks, or step-by-step guidance when possible. Focus on business value and ROI."""
 
         # Get recent chat history for context
         recent_chats = await db.chat_messages.find(
@@ -205,6 +232,86 @@ async def get_chat_history(user_id: str, limit: int = 50):
         {"user_id": user_id}
     ).sort("timestamp", -1).limit(limit).to_list(limit)
     return [ChatMessage(**msg) for msg in messages]
+
+# Rating and feedback routes
+@api_router.post("/chat/rate")
+async def rate_chat_response(rating_data: ChatRating):
+    try:
+        result = await db.chat_messages.update_one(
+            {"id": rating_data.message_id},
+            {"$set": {
+                "rating": rating_data.rating,
+                "feedback": rating_data.feedback,
+                "rated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"status": "success", "message": "Rating submitted"}
+    except Exception as e:
+        logging.error(f"Rating error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to submit rating")
+
+@api_router.post("/chat/feedback")
+async def submit_chat_feedback(feedback_data: ChatFeedback):
+    try:
+        result = await db.chat_messages.update_one(
+            {"id": feedback_data.message_id},
+            {"$set": {
+                "rating": feedback_data.rating,
+                "feedback": feedback_data.feedback,
+                "feedback_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"status": "success", "message": "Feedback submitted"}
+    except Exception as e:
+        logging.error(f"Feedback error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to submit feedback")
+
+# Analytics routes for admin
+@api_router.get("/admin/analytics")
+async def get_admin_analytics():
+    try:
+        # Get basic counts
+        total_users = await db.users.count_documents({})
+        total_messages = await db.chat_messages.count_documents({})
+        total_configs = await db.widget_configs.count_documents({})
+        total_kb_items = await db.knowledge_base.count_documents({})
+        
+        # Get recent activity
+        recent_users = await db.users.find().sort("created_at", -1).limit(5).to_list(5)
+        recent_messages = await db.chat_messages.find().sort("timestamp", -1).limit(10).to_list(10)
+        
+        # Rating statistics
+        helpful_ratings = await db.chat_messages.count_documents({"rating": "helpful"})
+        not_helpful_ratings = await db.chat_messages.count_documents({"rating": "not_helpful"})
+        
+        return {
+            "totals": {
+                "users": total_users,
+                "messages": total_messages,
+                "configs": total_configs,
+                "knowledge_items": total_kb_items
+            },
+            "recent_activity": {
+                "users": [User(**user).dict() for user in recent_users],
+                "messages": [ChatMessage(**msg).dict() for msg in recent_messages]
+            },
+            "ratings": {
+                "helpful": helpful_ratings,
+                "not_helpful": not_helpful_ratings,
+                "total_rated": helpful_ratings + not_helpful_ratings
+            }
+        }
+    except Exception as e:
+        logging.error(f"Analytics error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get analytics")
 
 # Original routes
 @api_router.get("/")
