@@ -56,6 +56,12 @@ const WidgetDemo = () => {
       loadChatHistory();
       loadConfig();
       loadKnowledgeBase();
+      
+      // Check if user should see onboarding
+      const tourCompleted = localStorage.getItem(`modq_tour_completed_${currentUser.id}`);
+      if (!tourCompleted) {
+        setShowOnboarding(true);
+      }
     }
   }, [currentUser]);
 
