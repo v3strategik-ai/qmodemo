@@ -12,6 +12,8 @@ import { Switch } from './ui/switch';
 import { ArrowLeft, Bot, Send, Settings, Upload, Zap, Brain, MessageSquare, FileText, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import OnboardingTour from './OnboardingTour';
+import AIResponseRating from './AIResponseRating';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
