@@ -565,6 +565,14 @@ const WidgetDemo = () => {
           </Tabs>
         </div>
       </div>
+      
+      {/* Onboarding Tour */}
+      {showOnboarding && (
+        <OnboardingTour 
+          user={currentUser}
+          onComplete={() => setShowOnboarding(false)}
+        />
+      )}
     </div>
   );
 };
