@@ -63,7 +63,7 @@ const OnboardingTour = ({ onComplete, user }) => {
       title: 'Visual Analytics Dashboard',
       content: 'View your business performance with interactive charts, key metrics, and AI-powered insights.',
       icon: <Target className="w-6 h-6" />,
-      target: 'button[role="tab"]:has-text("Analytics")',
+      target: '[role="tablist"]',
       position: 'top',
       action: () => {
         const tabs = document.querySelectorAll('button[role="tab"]');
