@@ -111,6 +111,15 @@ const Landing = () => {
             </Button>
           </div>
 
+          {/* Smart Demo Mode */}
+          <div className="max-w-2xl mx-auto mb-12">
+            <SmartDemoMode 
+              onDemoLoaded={(demo) => {
+                navigate('/widget-demo');
+              }}
+            />
+          </div>
+
           {/* Features Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
             {features.map((feature, index) => (
