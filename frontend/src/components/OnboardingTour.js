@@ -129,7 +129,14 @@ const OnboardingTour = ({ onComplete, user }) => {
   if (!isVisible) return null;
 
   const getTooltipPosition = () => {
-    const target = currentStepData.target ? document.querySelector(currentStepData.target) : null;
+    let target = null;
+    
+    try {
+      target = currentStepData.target ? document.querySelector(currentStepData.target) : null;
+    } catch (error) {
+      console.warn('Invalid selector in onboarding tour:', currentStepData.target, error);
+      target = null;
+    }
     
     if (!target || currentStepData.position === 'center') {
       return {
