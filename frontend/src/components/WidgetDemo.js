@@ -297,10 +297,14 @@ const WidgetDemo = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 glass neon-border">
+            <TabsList className="grid w-full grid-cols-5 glass neon-border">
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 AI Chat
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Analytics
               </TabsTrigger>
               <TabsTrigger value="config" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
