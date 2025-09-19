@@ -532,7 +532,19 @@ const WidgetDemo = () => {
             <TabsContent value="knowledge" className="mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="holographic p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-white">Add Knowledge</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-white">Upload Documents</h3>
+                  <FileUploadZone 
+                    userId={currentUser?.id}
+                    onUploadComplete={(uploadedItem) => {
+                      // Refresh knowledge base list
+                      loadKnowledgeBase();
+                      toast.success('Document processed and added to knowledge base!');
+                    }}
+                  />
+                </Card>
+                
+                <Card className="holographic p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-white">Add Knowledge Manually</h3>
                   <form onSubmit={addKnowledgeItem} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Title</label>
@@ -560,28 +572,43 @@ const WidgetDemo = () => {
                     </Button>
                   </form>
                 </Card>
-                
-                <Card className="holographic p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-white">Knowledge Items</h3>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {knowledgeItems.length === 0 ? (
-                      <p className="text-gray-400 text-center py-8">
-                        No knowledge items yet. Add some to help your AI assistant learn about your business.
-                      </p>
-                    ) : (
-                      knowledgeItems.map((item) => (
-                        <div key={item.id} className="glass p-3 rounded-lg neon-border">
-                          <h4 className="font-medium text-white mb-1">{item.title}</h4>
-                          <p className="text-sm text-gray-300 line-clamp-2">{item.content}</p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Added {new Date(item.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </Card>
               </div>
+              
+              {/* Knowledge Base Items List */}
+              <Card className="holographic p-6 mt-6">
+                <h3 className="text-xl font-semibold mb-4 text-white">Knowledge Base Items</h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {knowledgeItems.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">
+                      No knowledge items yet. Upload documents or add information manually to help your AI assistant learn about your business.
+                    </p>
+                  ) : (
+                    knowledgeItems.map((item) => (
+                      <div key={item.id} className="glass p-4 rounded-lg neon-border">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-white mb-1 flex items-center gap-2">
+                              {item.file_type !== 'text' && (
+                                <FileText className="w-4 h-4 text-blue-400" />
+                              )}
+                              {item.title}
+                            </h4>
+                            <p className="text-sm text-gray-300 line-clamp-3 mb-2">{item.content}</p>
+                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                              <span>Added {new Date(item.created_at).toLocaleDateString()}</span>
+                              {item.file_type !== 'text' && (
+                                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                  {item.file_type}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
             </TabsContent>
 
             {/* Automations Tab */}
