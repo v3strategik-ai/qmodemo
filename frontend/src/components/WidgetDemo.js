@@ -17,6 +17,10 @@ import AIResponseRating from './AIResponseRating';
 import ConversationStarters from './ConversationStarters';
 import VisualAnalyticsDashboard from './VisualAnalyticsDashboard';
 import FileUploadZone from './FileUploadZone';
+import SmartInsightsPanel from './SmartInsightsPanel';
+import ProgressTracker from './ProgressTracker';
+import ExportCapabilities from './ExportCapabilities';
+import AchievementSystem from './AchievementSystem';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
