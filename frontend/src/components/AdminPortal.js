@@ -233,7 +233,15 @@ const AdminPortal = () => {
               <Activity className="w-3 h-3 mr-1" />
               System Online
             </Badge>
-            <Button onClick={handleLogout} variant="outline" className="glass neon-border">
+            <Button 
+              onClick={() => {
+                // Clear all authentication data and redirect
+                localStorage.clear();
+                window.location.href = '/';
+              }} 
+              variant="outline" 
+              className="glass neon-border"
+            >
               Logout
             </Button>
           </div>
