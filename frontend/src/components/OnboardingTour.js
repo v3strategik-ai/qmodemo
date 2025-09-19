@@ -58,6 +58,22 @@ const OnboardingTour = ({ onComplete, user }) => {
       }
     },
     {
+      id: 'analytics',
+      title: 'Visual Analytics Dashboard',
+      content: 'View your business performance with interactive charts, key metrics, and AI-powered insights.',
+      icon: <Target className="w-6 h-6" />,
+      target: 'button[role="tab"]:has-text("Analytics")',
+      position: 'top',
+      action: () => {
+        const tabs = document.querySelectorAll('button[role="tab"]');
+        tabs.forEach(tab => {
+          if (tab.textContent.includes('Analytics')) {
+            tab.click();
+          }
+        });
+      }
+    },
+    {
       id: 'ready',
       title: 'You\'re All Set!',
       content: 'Start your conversation with the AI assistant. Try asking about sales analysis, workflow automation, or business insights.',
