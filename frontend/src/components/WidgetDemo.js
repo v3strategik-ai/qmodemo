@@ -412,6 +412,11 @@ const WidgetDemo = () => {
               </Card>
             </TabsContent>
 
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="mt-6">
+              <VisualAnalyticsDashboard userConfig={config} />
+            </TabsContent>
+
             {/* Configuration Tab */}
             <TabsContent value="config" className="mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
