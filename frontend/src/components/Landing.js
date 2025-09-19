@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { ArrowRight, Bot, Zap, Shield, Globe, Brain, Sparkles, Rocket, Target, Users, Settings } from 'lucide-react';
+import SmartDemoMode from './SmartDemoMode';
 
 const Landing = () => {
   const navigate = useNavigate();
