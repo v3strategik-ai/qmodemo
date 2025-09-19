@@ -288,9 +288,23 @@ const WidgetDemo = () => {
               <Sparkles className="w-3 h-3 mr-1" />
               AI Active
             </Badge>
-            <p className="text-sm text-gray-400">
-              Welcome, <span className="text-white font-medium">{currentUser?.username}</span>
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-400">
+                Welcome, <span className="text-white font-medium">{currentUser?.username}</span>
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // Clear localStorage and reload to allow different login
+                  localStorage.clear();
+                  window.location.href = '/';
+                }}
+                className="text-xs glass neon-border hover:bg-white/10"
+              >
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
 
