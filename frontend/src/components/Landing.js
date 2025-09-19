@@ -153,16 +153,31 @@ const Landing = () => {
             
             {/* Admin Access */}
             <div className="mt-8 pt-8 border-t border-gray-700">
-              <p className="text-xs text-gray-500 mb-2">Beta Testing Access:</p>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigate('/admin')}
-                className="text-gray-500 hover:text-blue-400 text-xs"
-              >
-                <Settings className="w-3 h-3 mr-1" />
-                Admin Portal
-              </Button>
+              <p className="text-xs text-gray-500 mb-3">Beta Testing Access:</p>
+              <div className="flex justify-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate('/admin')}
+                  className="text-gray-500 hover:text-blue-400 text-xs"
+                >
+                  <Settings className="w-3 h-3 mr-1" />
+                  Admin Portal
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    // Clear any existing login data
+                    localStorage.clear();
+                    navigate('/widget-demo');
+                  }}
+                  className="text-gray-500 hover:text-green-400 text-xs"
+                >
+                  <Users className="w-3 h-3 mr-1" />
+                  New User Demo
+                </Button>
+              </div>
             </div>
           </div>
         </div>
