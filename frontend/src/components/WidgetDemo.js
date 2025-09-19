@@ -655,7 +655,20 @@ const WidgetDemo = () => {
               </Card>
             </TabsContent>
 
-            {/* Automations Tab */}
+            {/* Achievements Tab */}
+            <TabsContent value="achievements" className="mt-6">
+              <AchievementSystem 
+                userConfig={config}
+                chatMessages={messages}
+                knowledgeItems={knowledgeItems}
+                progressStats={{
+                  currentStreak: 3, // This would come from ProgressTracker in production
+                  totalConversations: messages.length
+                }}
+              />
+            </TabsContent>
+
+            {/* Legacy Automations Tab - keeping for backward compatibility */}
             <TabsContent value="automations" className="mt-6">
               <Card className="holographic p-6">
                 <h3 className="text-xl font-semibold mb-4 text-white">Workflow Automations</h3>
