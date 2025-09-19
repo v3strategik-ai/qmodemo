@@ -204,16 +204,20 @@ const OnboardingTour = ({ onComplete, user }) => {
           className="fixed pointer-events-none z-[9999] rounded-lg"
           style={{
             ...(() => {
-              const target = document.querySelector(currentStepData.target);
-              if (target) {
-                const rect = target.getBoundingClientRect();
-                return {
-                  top: rect.top - 4,
-                  left: rect.left - 4,
-                  width: rect.width + 8,
-                  height: rect.height + 8,
-                  boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 0 9999px rgba(0, 0, 0, 0.3)'
-                };
+              try {
+                const target = document.querySelector(currentStepData.target);
+                if (target) {
+                  const rect = target.getBoundingClientRect();
+                  return {
+                    top: rect.top - 4,
+                    left: rect.left - 4,
+                    width: rect.width + 8,
+                    height: rect.height + 8,
+                    boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 0 9999px rgba(0, 0, 0, 0.3)'
+                  };
+                }
+              } catch (error) {
+                console.warn('Error highlighting target:', error);
               }
               return {};
             })()
