@@ -47,10 +47,9 @@ const OnboardingTour = ({ onComplete, user }) => {
       title: 'Build Your Knowledge Base',
       content: 'Upload company information, policies, and data to train your AI assistant for better, personalized responses.',
       icon: <BookOpen className="w-6 h-6" />,
-      target: 'button[role="tab"]:has-text("Knowledge Base")',
+      target: '[role="tablist"]',
       position: 'top',
       action: () => {
-        const kbTab = document.querySelector('button[role="tab"]');
         const tabs = document.querySelectorAll('button[role="tab"]');
         tabs.forEach(tab => {
           if (tab.textContent.includes('Knowledge Base')) {
