@@ -31,13 +31,15 @@ const OnboardingTour = ({ onComplete, user }) => {
       title: 'Configure Your Assistant',
       content: 'Set your company details and choose an AI personality that matches your business needs.',
       icon: <Zap className="w-6 h-6" />,
-      target: 'button[role="tab"]:has-text("Configuration")',
+      target: '[data-radix-collection-item]',
       position: 'top',
       action: () => {
-        const configTab = document.querySelector('button[role="tab"]');
-        if (configTab && configTab.textContent.includes('Configuration')) {
-          configTab.click();
-        }
+        const tabs = document.querySelectorAll('button[role="tab"]');
+        tabs.forEach(tab => {
+          if (tab.textContent.includes('Configuration')) {
+            tab.click();
+          }
+        });
       }
     },
     {
