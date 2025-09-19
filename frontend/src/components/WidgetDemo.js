@@ -316,26 +316,34 @@ const WidgetDemo = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 glass neon-border">
+            <TabsList className="grid w-full grid-cols-7 glass neon-border">
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 AI Chat
+              </TabsTrigger>
+              <TabsTrigger value="insights" className="flex items-center gap-2">
+                <Brain className="w-4 h-4" />
+                Insights
               </TabsTrigger>
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Analytics
               </TabsTrigger>
+              <TabsTrigger value="progress" className="flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Progress
+              </TabsTrigger>
               <TabsTrigger value="config" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
-                Configuration
+                Config
               </TabsTrigger>
               <TabsTrigger value="knowledge" className="flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                Knowledge Base
+                Knowledge
               </TabsTrigger>
-              <TabsTrigger value="automations" className="flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Automations
+              <TabsTrigger value="achievements" className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Achievements
               </TabsTrigger>
             </TabsList>
 
