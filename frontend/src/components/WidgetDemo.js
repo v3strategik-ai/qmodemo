@@ -439,9 +439,41 @@ const WidgetDemo = () => {
               </Card>
             </TabsContent>
 
+            {/* Smart Insights Tab */}
+            <TabsContent value="insights" className="mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <SmartInsightsPanel 
+                    userConfig={config}
+                    chatMessages={messages}
+                  />
+                </div>
+                <div>
+                  <Card className="holographic p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-white">Export & Share</h3>
+                    <ExportCapabilities 
+                      userConfig={config}
+                      chatMessages={messages}
+                      knowledgeItems={knowledgeItems}
+                      insights={[]} // This would come from SmartInsightsPanel in production
+                    />
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="mt-6">
               <VisualAnalyticsDashboard userConfig={config} />
+            </TabsContent>
+
+            {/* Progress Tab */}
+            <TabsContent value="progress" className="mt-6">
+              <ProgressTracker 
+                userConfig={config}
+                chatMessages={messages}
+                knowledgeItems={knowledgeItems}
+              />
             </TabsContent>
 
             {/* Configuration Tab */}
