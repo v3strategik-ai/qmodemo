@@ -332,10 +332,24 @@ const WidgetDemo = () => {
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {messages.length === 0 && (
-                    <div className="text-center text-gray-400 py-8">
-                      <Bot className="w-12 h-12 mx-auto mb-4 text-gray-500" />
-                      <p>Start a conversation with your AI assistant</p>
-                      <p className="text-sm mt-2">Try asking about business insights, workflow automation, or analytics</p>
+                    <div className="space-y-6">
+                      <div className="text-center text-gray-400 py-4">
+                        <Bot className="w-12 h-12 mx-auto mb-4 text-gray-500" />
+                        <p className="text-lg font-medium">Welcome to your AI Business Assistant</p>
+                        <p className="text-sm mt-2">Get started with a conversation below, or try one of these popular topics</p>
+                      </div>
+                      
+                      <ConversationStarters 
+                        userConfig={config}
+                        onStarterClick={(message) => {
+                          setCurrentMessage(message);
+                          // Auto-submit the message
+                          setTimeout(() => {
+                            const event = { preventDefault: () => {} };
+                            sendMessage(event);
+                          }, 100);
+                        }}
+                      />
                     </div>
                   )}
                   
