@@ -38,7 +38,10 @@ class ModQAPITester:
             elif method == 'PUT':
                 response = requests.put(url, json=data, headers=headers, timeout=30)
             elif method == 'DELETE':
-                response = requests.delete(url, headers=headers, timeout=30)
+                if data:
+                    response = requests.delete(url, json=data, headers=headers, timeout=30)
+                else:
+                    response = requests.delete(url, headers=headers, timeout=30)
 
             print(f"   Status Code: {response.status_code}")
             
