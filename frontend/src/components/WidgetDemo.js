@@ -904,17 +904,8 @@ const WidgetDemo = () => {
               </div>
             </TabsContent>
 
-            {/* Voice Tab */}
-            <TabsContent value="voice" className="mt-6">
-              <VoiceInterface
-                ref={voiceInterfaceRef}
-                currentUser={currentUser}
-                voiceSettings={config.voice_settings}
-                onVoiceSettingsChange={handleVoiceSettingsChange}
-                onTranscriptionResult={handleVoiceTranscription}
-                onTTSResult={handleTTSRequest}
-              />
-            </TabsContent>
+            {/* Voice Tab - Removed for now */}
+            {/* Voice features will be implemented in future updates */}
 
             {/* Sessions Tab */}
             <TabsContent value="sessions" className="mt-6">
