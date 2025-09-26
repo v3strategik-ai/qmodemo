@@ -109,7 +109,7 @@
     implemented: true
     working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -122,6 +122,9 @@
         - working: false
           agent: "testing"
           comment: "CRITICAL: WebSocket endpoint /ws/chat/{user_id} not accessible - returns HTML instead of accepting WebSocket connections. Routing issue in deployment environment. REST endpoints work fine but real-time streaming via WebSocket is broken."
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL: WebSocket functionality still completely broken after recent fixes. WebSocket endpoint /ws/chat/{user_id} returns HTML (frontend React app) instead of accepting WebSocket connections. This is a Kubernetes ingress/routing configuration issue in production environment. All WebSocket connection attempts timeout. The WebSocket handler code in backend is correct, but requests are being routed to frontend instead of backend WebSocket endpoint."
 
   - task: "Multi-conversation Context Management"
     implemented: true
