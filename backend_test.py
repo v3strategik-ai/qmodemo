@@ -759,33 +759,30 @@ class ModQAPITester:
         return success
 
 def main():
-    print("🚀 Starting modQ API Testing - Option B: Advanced AI Features")
+    print("🚀 Starting modQ WebSocket Functionality Testing")
+    print("=" * 70)
+    print("Focus: WebSocket connection, streaming, and voice endpoint validation")
     print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence - including new Option B features
+    # Test sequence - focused on WebSocket functionality as requested
     tests = [
+        # Basic setup tests
         ("Root Endpoint", tester.test_root_endpoint),
-        ("User Registration", tester.test_user_registration),
-        ("Get Users", tester.test_get_users),
-        ("Widget Config Creation", tester.test_widget_config_creation),
-        ("Get Widget Config", tester.test_get_widget_config),
-        ("Knowledge Base Creation", tester.test_knowledge_base_creation),
-        ("Get Knowledge Base", tester.test_get_knowledge_base),
-        ("AI Chat", tester.test_ai_chat),
-        ("Chat History", tester.test_chat_history),
-        ("Status Endpoints", tester.test_status_endpoints),
         
-        # NEW OPTION B TESTS
+        # Core functionality that WebSocket depends on
         ("AI Personalities", tester.test_ai_personalities),
         ("Session Management", tester.test_session_management),
-        ("Enhanced Chat with Session", tester.test_enhanced_chat_with_session),
+        
+        # WebSocket-focused tests (main focus)
+        ("WebSocket Connection", tester.test_websocket_connection),
+        ("WebSocket Chat Message Streaming", tester.test_websocket_chat_message),
+        ("WebSocket Connection Lifecycle", tester.test_websocket_connection_lifecycle),
+        
+        # Voice endpoints validation (should return proper 501 errors)
         ("Voice Transcription Endpoint", tester.test_voice_transcription_endpoint),
         ("Voice Synthesis Endpoint", tester.test_voice_synthesis_endpoint),
-        ("WebSocket Connection", tester.test_websocket_connection),
-        ("Widget Config with Voice Settings", tester.test_widget_config_with_voice_settings),
-        ("Session Deletion", tester.test_session_deletion),
     ]
     
     failed_tests = []
@@ -796,20 +793,18 @@ def main():
             success = test_func()
             if not success:
                 failed_tests.append(test_name)
-                # Mark critical failures for Option B features
-                if test_name in ["AI Personalities", "Session Management", "Enhanced Chat with Session", 
-                               "WebSocket Connection", "Voice Synthesis Endpoint"]:
+                # Mark WebSocket tests as critical
+                if "WebSocket" in test_name:
                     critical_failures.append(test_name)
         except Exception as e:
             print(f"❌ {test_name} failed with exception: {str(e)}")
             failed_tests.append(test_name)
-            if test_name in ["AI Personalities", "Session Management", "Enhanced Chat with Session", 
-                           "WebSocket Connection", "Voice Synthesis Endpoint"]:
+            if "WebSocket" in test_name:
                 critical_failures.append(test_name)
     
     # Print final results
     print("\n" + "=" * 70)
-    print("📊 FINAL TEST RESULTS - Option B: Advanced AI Features")
+    print("📊 WEBSOCKET FUNCTIONALITY TEST RESULTS")
     print("=" * 70)
     print(f"Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
@@ -822,31 +817,36 @@ def main():
             print(f"   - {test}")
     
     if critical_failures:
-        print(f"\n🚨 CRITICAL FAILURES (Option B Core Features):")
+        print(f"\n🚨 CRITICAL WEBSOCKET FAILURES:")
         for test in critical_failures:
             print(f"   - {test}")
     
     if not failed_tests:
         print(f"\n✅ All tests passed!")
     
-    if tester.test_user_data:
-        print(f"\n👤 Test User Created:")
-        print(f"   ID: {tester.test_user_data.get('id')}")
-        print(f"   Username: {tester.test_user_data.get('username')}")
-        print(f"   Email: {tester.test_user_data.get('email')}")
+    # WebSocket-specific summary
+    websocket_tests = [test for test in [t[0] for t in tests] if "WebSocket" in test]
+    websocket_passed = sum(1 for test in websocket_tests if test not in failed_tests)
     
-    if tester.test_session_id:
-        print(f"\n💬 Test Session:")
-        print(f"   Session ID: {tester.test_session_id}")
+    print(f"\n🔌 WebSocket Functionality Summary:")
+    print(f"   WebSocket Tests Passed: {websocket_passed}/{len(websocket_tests)}")
     
-    # Summary for Option B features
-    option_b_tests = ["AI Personalities", "Session Management", "Enhanced Chat with Session", 
-                     "Voice Transcription Endpoint", "Voice Synthesis Endpoint", 
-                     "WebSocket Connection", "Widget Config with Voice Settings"]
+    if websocket_passed == len(websocket_tests):
+        print(f"   ✅ WebSocket functionality is working correctly!")
+    else:
+        print(f"   ❌ WebSocket functionality has issues that need attention")
     
-    option_b_passed = sum(1 for test in option_b_tests if test not in failed_tests)
-    print(f"\n🧠 Option B Features Summary:")
-    print(f"   Advanced AI Features Passed: {option_b_passed}/{len(option_b_tests)}")
+    # Voice endpoints summary
+    voice_tests = ["Voice Transcription Endpoint", "Voice Synthesis Endpoint"]
+    voice_passed = sum(1 for test in voice_tests if test not in failed_tests)
+    
+    print(f"\n🎤 Voice Endpoints Summary:")
+    print(f"   Voice Tests Passed: {voice_passed}/{len(voice_tests)}")
+    
+    if voice_passed == len(voice_tests):
+        print(f"   ✅ Voice endpoints properly return 501 errors as expected")
+    else:
+        print(f"   ❌ Voice endpoints not returning proper error responses")
     
     return 0 if len(critical_failures) == 0 else 1
 
