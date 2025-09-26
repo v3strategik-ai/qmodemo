@@ -438,12 +438,12 @@ const WidgetDemo = () => {
     saveConfig(updatedConfig);
   };
 
-  const saveConfig = async () => {
+  const saveConfig = async (configToSave = config) => {
     try {
       setLoading(true);
       await axios.post(`${API}/widget/config`, {
         user_id: currentUser.id,
-        ...config
+        ...configToSave
       });
       toast.success('Configuration saved successfully!');
     } catch (error) {
