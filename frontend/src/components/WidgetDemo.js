@@ -93,6 +93,8 @@ const WidgetDemo = () => {
       loadChatHistory();
       loadConfig();
       loadKnowledgeBase();
+      loadConversationSessions();
+      loadAIPersonalities();
       
       // Check if user should see onboarding
       const tourCompleted = localStorage.getItem(`modq_tour_completed_${currentUser.id}`);
@@ -104,10 +106,156 @@ const WidgetDemo = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamingMessage]);
+
+  // WebSocket event listeners
+  useEffect(() => {
+    if (currentUser && wsConnected) {
+      // Handle session establishment
+      const handleSessionEstablished = (data) => {
+        console.log('Session established:', data);
+        setCurrentSessionId(data.session_id);
+      };
+
+      // Handle typing indicators
+      const handleTypingStart = () => {
+        setIsTyping(true);
+        setStreamingMessage('');
+      };
+
+      // Handle response streaming
+      const handleResponseStart = (data) => {
+        console.log('Response started for:', data.message);
+        setIsTyping(true);
+        setStreamingMessage('');
+        setCurrentStreamingId(Date.now().toString());
+        
+        // Add user message to display immediately
+        const userMessage = {
+          id: Date.now().toString(),
+          user_id: currentUser.id,
+          session_id: data.session_id || wsSessionId,
+          message: data.message,
+          response: '',
+          timestamp: new Date().toISOString(),
+          ai_personality: selectedPersonality,
+          is_streaming: true
+        };
+        
+        setMessages(prev => [...prev, userMessage]);
+      };
+
+      // Handle response chunks
+      const handleResponseChunk = (data) => {
+        setStreamingMessage(prev => prev + data.chunk);
+      };
+
+      // Handle response completion
+      const handleResponseComplete = () => {
+        setIsTyping(false);
+      };
+
+      // Handle message completion with full response
+      const handleMessageComplete = (data) => {
+        setMessages(prev => prev.map(msg => 
+          msg.id === (currentStreamingId || msg.id) ? {
+            ...msg,
+            id: data.message_id,
+            response: data.full_response,
+            is_streaming: false
+          } : msg
+        ));
+        setStreamingMessage('');
+        setCurrentStreamingId(null);
+        
+        // Auto-play TTS if enabled
+        if (config.voice_settings?.enabled && config.voice_settings?.auto_play_responses) {
+          handleTTSRequest(data.full_response);
+        }
+      };
+
+      // Handle voice transcription results
+      const handleTranscriptionResult = (data) => {
+        console.log('Transcription result:', data.text);
+        setCurrentMessage(data.text);
+        toast.success(`Transcribed: "${data.text}"`);
+      };
+
+      // Handle TTS results
+      const handleTTSResult = (data) => {
+        console.log('TTS result received');
+        if (voiceInterfaceRef.current && voiceInterfaceRef.current.playAudioFromBase64) {
+          voiceInterfaceRef.current.playAudioFromBase64(data.audio_data);
+        }
+      };
+
+      // Handle errors
+      const handleError = (data) => {
+        console.error('WebSocket error:', data);
+        toast.error(data.message || 'An error occurred');
+        setIsTyping(false);
+      };
+
+      const handleTranscriptionError = (data) => {
+        console.error('Transcription error:', data);
+        toast.error(data.message || 'Failed to transcribe audio');
+      };
+
+      const handleTTSError = (data) => {
+        console.error('TTS error:', data);
+        toast.error(data.message || 'Failed to generate speech');
+      };
+
+      // Add event listeners
+      addWSListener('session_established', handleSessionEstablished);
+      addWSListener('typing_start', handleTypingStart);
+      addWSListener('response_start', handleResponseStart);
+      addWSListener('response_chunk', handleResponseChunk);
+      addWSListener('response_complete', handleResponseComplete);
+      addWSListener('message_complete', handleMessageComplete);
+      addWSListener('transcription_result', handleTranscriptionResult);
+      addWSListener('transcription_error', handleTranscriptionError);
+      addWSListener('tts_result', handleTTSResult);
+      addWSListener('tts_error', handleTTSError);
+      addWSListener('error', handleError);
+
+      // Cleanup listeners on unmount
+      return () => {
+        removeWSListener('session_established', handleSessionEstablished);
+        removeWSListener('typing_start', handleTypingStart);
+        removeWSListener('response_start', handleResponseStart);
+        removeWSListener('response_chunk', handleResponseChunk);
+        removeWSListener('response_complete', handleResponseComplete);
+        removeWSListener('message_complete', handleMessageComplete);
+        removeWSListener('transcription_result', handleTranscriptionResult);
+        removeWSListener('transcription_error', handleTranscriptionError);
+        removeWSListener('tts_result', handleTTSResult);
+        removeWSListener('tts_error', handleTTSError);
+        removeWSListener('error', handleError);
+      };
+    }
+  }, [currentUser, wsConnected, wsSessionId, selectedPersonality, config.voice_settings, currentStreamingId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const loadConversationSessions = async () => {
+    try {
+      const response = await axios.get(`${API}/sessions/${currentUser.id}`);
+      setConversationSessions(response.data);
+    } catch (error) {
+      console.error('Failed to load conversation sessions:', error);
+    }
+  };
+
+  const loadAIPersonalities = async () => {
+    try {
+      const response = await axios.get(`${API}/personalities`);
+      setAiPersonalities(response.data.personalities);
+    } catch (error) {
+      console.error('Failed to load AI personalities:', error);
+    }
   };
 
   const handleAuth = async (e) => {
