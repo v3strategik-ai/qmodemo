@@ -1091,23 +1091,36 @@ class ModQAPITester:
         return validation_passed >= 1  # At least one validation test should pass
 
 def main():
-    print("🚀 Starting modQ WebSocket Functionality Testing")
+    print("🚀 Starting modQ Integration Marketplace Backend Testing")
     print("=" * 70)
-    print("Focus: WebSocket connection, streaming, and voice endpoint validation")
+    print("Focus: Integration Management Endpoints and Data Validation")
     print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence - focused on WebSocket functionality as requested
+    # Test sequence - focused on Integration Marketplace functionality as requested
     tests = [
         # Basic setup tests
         ("Root Endpoint", tester.test_root_endpoint),
         
-        # Core functionality that WebSocket depends on
+        # Integration Marketplace Tests (main focus)
+        ("Available Integrations Endpoint", tester.test_available_integrations),
+        ("User Integrations Empty", tester.test_user_integrations_empty),
+        ("Connect Integration", tester.test_connect_integration),
+        ("User Integrations With Data", tester.test_get_user_integrations_with_data),
+        ("Connect Duplicate Integration", tester.test_connect_duplicate_integration),
+        ("Sync Integration", tester.test_sync_integration_success),
+        ("Sync Non-existent Integration", tester.test_sync_nonexistent_integration),
+        ("Disconnect Integration", tester.test_disconnect_integration),
+        ("Disconnect Non-existent Integration", tester.test_disconnect_nonexistent_integration),
+        ("User Integrations After Disconnect", tester.test_user_integrations_after_disconnect),
+        ("Integration Data Validation", tester.test_integration_data_validation),
+        
+        # Core functionality tests for context
         ("AI Personalities", tester.test_ai_personalities),
         ("Session Management", tester.test_session_management),
         
-        # WebSocket-focused tests (main focus)
+        # WebSocket tests (secondary focus)
         ("WebSocket Connection", tester.test_websocket_connection),
         ("WebSocket Chat Message Streaming", tester.test_websocket_chat_message),
         ("WebSocket Connection Lifecycle", tester.test_websocket_connection_lifecycle),
