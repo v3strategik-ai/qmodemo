@@ -44,20 +44,48 @@ const WidgetDemo = () => {
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState('');
+  const [currentStreamingId, setCurrentStreamingId] = useState(null);
   const messagesEndRef = useRef(null);
+  const voiceInterfaceRef = useRef(null);
   
-  // Config state
+  // Session and personality state
+  const [conversationSessions, setConversationSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [aiPersonalities, setAiPersonalities] = useState({});
+  const [selectedPersonality, setSelectedPersonality] = useState('Professional Assistant');
+  
+  // Config state  
   const [config, setConfig] = useState({
     company_name: '',
     industry: '',
     ai_personality: 'Professional Assistant',
-    workflow_automations: []
+    workflow_automations: [],
+    voice_settings: {
+      enabled: false,
+      voice: 'alloy',
+      speech_speed: 1.0,
+      auto_play_responses: true
+    },
+    streaming_enabled: true
   });
   
   // Knowledge base state
   const [knowledgeItems, setKnowledgeItems] = useState([]);
   const [newKbTitle, setNewKbTitle] = useState('');
   const [newKbContent, setNewKbContent] = useState('');
+
+  // WebSocket connection
+  const {
+    isConnected: wsConnected,
+    isConnecting: wsConnecting,
+    sessionId: wsSessionId,
+    sendChatMessage,
+    sendVoiceTranscription,
+    requestTTS,
+    addEventListener: addWSListener,
+    removeEventListener: removeWSListener
+  } = useWebSocket(currentUser?.id);
 
   useEffect(() => {
     if (currentUser) {
