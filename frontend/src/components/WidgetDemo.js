@@ -878,26 +878,27 @@ const WidgetDemo = () => {
                     </div>
                   </Card>
                   
-                  {/* Voice Quick Settings */}
-                  {config.voice_settings?.enabled && (
-                    <Card className="holographic p-4">
-                      <h4 className="font-medium text-gray-300 mb-3">Quick Voice Controls</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-400">Auto-play responses</span>
-                          <Switch
-                            checked={config.voice_settings.auto_play_responses}
-                            onCheckedChange={(value) => {
-                              handleVoiceSettingsChange({
-                                ...config.voice_settings,
-                                auto_play_responses: value
-                              });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </Card>
-                  )}
+                  {/* AI Personality Info */}
+                  <Card className="holographic p-4">
+                    <h4 className="font-medium text-gray-300 mb-3">Current AI Personality</h4>
+                    <div className="space-y-2">
+                      <p className="text-sm text-white font-medium">{selectedPersonality}</p>
+                      {aiPersonalities[selectedPersonality] && (
+                        <>
+                          <p className="text-xs text-gray-400">
+                            {aiPersonalities[selectedPersonality].description}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {aiPersonalities[selectedPersonality].traits?.map(trait => (
+                              <Badge key={trait} className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                                {trait}
+                              </Badge>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </Card>
                 </div>
               </div>
             </TabsContent>
