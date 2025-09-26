@@ -170,7 +170,9 @@ const WidgetDemo = () => {
         
         // Auto-play TTS if enabled
         if (config.voice_settings?.enabled && config.voice_settings?.auto_play_responses) {
-          handleTTSRequest(data.full_response);
+          if (requestTTS) {
+            requestTTS(data.full_response, config.voice_settings.voice, config.voice_settings.speech_speed);
+          }
         }
       };
 
