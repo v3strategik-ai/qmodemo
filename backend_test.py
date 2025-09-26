@@ -391,28 +391,29 @@ class ModQAPITester:
         return success
 
     def test_websocket_connection(self):
-        """Test WebSocket connection and basic functionality"""
-        if not self.test_user_id:
-            print("❌ Skipping WebSocket test - no user ID available")
-            return False
+        """Test WebSocket connection establishment and initial handshake"""
+        test_user_id = "test-user-123"
+        print(f"\n🔌 Testing WebSocket Connection for user: {test_user_id}")
         
-        print("\n🔌 Testing WebSocket Connection...")
-        
-        ws_url = f"{self.ws_base_url}/ws/chat/{self.test_user_id}"
+        ws_url = f"{self.ws_base_url}/ws/chat/{test_user_id}"
         print(f"   WebSocket URL: {ws_url}")
         
         self.websocket_messages = []
         self.websocket_connected = False
         connection_successful = False
+        session_id_received = None
         
         def on_message(ws, message):
             try:
                 data = json.loads(message)
                 self.websocket_messages.append(data)
-                print(f"   📨 Received: {data.get('type', 'unknown')}")
+                print(f"   📨 Received: {json.dumps(data, indent=2)}")
                 
                 if data.get('type') == 'connection_established':
                     self.websocket_connected = True
+                    nonlocal session_id_received
+                    session_id_received = data.get('session_id')
+                    print(f"   ✅ Connection established with session_id: {session_id_received}")
                     
             except Exception as e:
                 print(f"   ❌ Message parsing error: {e}")
@@ -421,25 +422,15 @@ class ModQAPITester:
             print(f"   ❌ WebSocket error: {error}")
 
         def on_close(ws, close_status_code, close_msg):
-            print(f"   🔌 WebSocket closed: {close_status_code}")
+            print(f"   🔌 WebSocket closed: {close_status_code} - {close_msg}")
 
         def on_open(ws):
-            print(f"   ✅ WebSocket connection opened")
+            print(f"   ✅ WebSocket connection opened successfully")
             nonlocal connection_successful
             connection_successful = True
             
-            # Send a test chat message
-            test_message = {
-                "type": "chat_message",
-                "message": "Hello WebSocket! This is a test message for streaming AI response.",
-                "personality": "Professional Assistant"
-            }
-            
-            ws.send(json.dumps(test_message))
-            print(f"   📤 Sent test message")
-            
-            # Wait a bit for response, then close
-            time.sleep(3)
+            # Wait for initial connection message
+            time.sleep(2)
             ws.close()
 
         try:
@@ -458,26 +449,210 @@ class ModQAPITester:
             ws_thread.start()
             
             # Wait for connection and messages
-            time.sleep(5)
+            time.sleep(4)
             
             self.tests_run += 1
             
-            if connection_successful and self.websocket_connected:
+            if connection_successful and self.websocket_connected and session_id_received:
                 self.tests_passed += 1
-                print(f"   ✅ WebSocket connection successful")
+                print(f"   ✅ WebSocket connection test PASSED")
                 print(f"   📊 Received {len(self.websocket_messages)} messages")
-                
-                # Check for expected message types
-                message_types = [msg.get('type') for msg in self.websocket_messages]
-                print(f"   📋 Message types: {message_types}")
-                
                 return True
             else:
-                print(f"   ❌ WebSocket connection failed")
+                print(f"   ❌ WebSocket connection test FAILED")
+                print(f"   Connection successful: {connection_successful}")
+                print(f"   WebSocket connected: {self.websocket_connected}")
+                print(f"   Session ID received: {session_id_received}")
                 return False
                 
         except Exception as e:
             print(f"   ❌ WebSocket test failed: {str(e)}")
+            return False
+
+    def test_websocket_chat_message(self):
+        """Test WebSocket chat message handling and streaming responses"""
+        test_user_id = "test-user-123"
+        print(f"\n💬 Testing WebSocket Chat Message Streaming for user: {test_user_id}")
+        
+        ws_url = f"{self.ws_base_url}/ws/chat/{test_user_id}"
+        print(f"   WebSocket URL: {ws_url}")
+        
+        self.websocket_messages = []
+        connection_successful = False
+        session_id_received = None
+        streaming_chunks_received = []
+        response_complete = False
+        
+        def on_message(ws, message):
+            try:
+                data = json.loads(message)
+                self.websocket_messages.append(data)
+                message_type = data.get('type', 'unknown')
+                print(f"   📨 Received [{message_type}]: {json.dumps(data, indent=2)[:200]}...")
+                
+                nonlocal session_id_received, streaming_chunks_received, response_complete
+                
+                if message_type == 'connection_established':
+                    session_id_received = data.get('session_id')
+                    print(f"   ✅ Connection established with session_id: {session_id_received}")
+                    
+                    # Send chat message after connection is established
+                    test_message = {
+                        "type": "chat_message",
+                        "message": "What are the key benefits of using AI in business operations?",
+                        "personality": "Professional Assistant"
+                    }
+                    
+                    print(f"   📤 Sending chat message: {test_message}")
+                    ws.send(json.dumps(test_message))
+                    
+                elif message_type == 'response_chunk':
+                    chunk = data.get('chunk', '')
+                    streaming_chunks_received.append(chunk)
+                    print(f"   📝 Streaming chunk #{len(streaming_chunks_received)}: '{chunk}'")
+                    
+                elif message_type == 'response_complete':
+                    response_complete = True
+                    print(f"   ✅ Response streaming completed")
+                    
+                elif message_type == 'message_complete':
+                    print(f"   ✅ Message processing completed")
+                    # Close connection after receiving complete response
+                    time.sleep(1)
+                    ws.close()
+                    
+            except Exception as e:
+                print(f"   ❌ Message parsing error: {e}")
+
+        def on_error(ws, error):
+            print(f"   ❌ WebSocket error: {error}")
+
+        def on_close(ws, close_status_code, close_msg):
+            print(f"   🔌 WebSocket closed: {close_status_code} - {close_msg}")
+
+        def on_open(ws):
+            print(f"   ✅ WebSocket connection opened for chat test")
+            nonlocal connection_successful
+            connection_successful = True
+
+        try:
+            # Create WebSocket connection
+            ws = websocket.WebSocketApp(
+                ws_url,
+                on_open=on_open,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close
+            )
+            
+            # Run WebSocket in a separate thread with timeout
+            ws_thread = threading.Thread(target=ws.run_forever)
+            ws_thread.daemon = True
+            ws_thread.start()
+            
+            # Wait for connection, message exchange, and streaming
+            time.sleep(15)  # Allow time for AI response streaming
+            
+            self.tests_run += 1
+            
+            # Evaluate test success
+            success_criteria = [
+                connection_successful,
+                session_id_received is not None,
+                len(streaming_chunks_received) > 0,
+                response_complete
+            ]
+            
+            if all(success_criteria):
+                self.tests_passed += 1
+                print(f"   ✅ WebSocket chat message test PASSED")
+                print(f"   📊 Total messages received: {len(self.websocket_messages)}")
+                print(f"   📝 Streaming chunks received: {len(streaming_chunks_received)}")
+                print(f"   💬 Full streamed response: {''.join(streaming_chunks_received)[:200]}...")
+                return True
+            else:
+                print(f"   ❌ WebSocket chat message test FAILED")
+                print(f"   Connection successful: {connection_successful}")
+                print(f"   Session ID received: {session_id_received}")
+                print(f"   Streaming chunks: {len(streaming_chunks_received)}")
+                print(f"   Response complete: {response_complete}")
+                return False
+                
+        except Exception as e:
+            print(f"   ❌ WebSocket chat test failed: {str(e)}")
+            return False
+
+    def test_websocket_connection_lifecycle(self):
+        """Test WebSocket connection lifecycle management"""
+        test_user_id = "test-user-lifecycle"
+        print(f"\n🔄 Testing WebSocket Connection Lifecycle for user: {test_user_id}")
+        
+        ws_url = f"{self.ws_base_url}/ws/chat/{test_user_id}"
+        
+        # Test multiple connections and disconnections
+        successful_connections = 0
+        
+        for i in range(3):
+            print(f"\n   Connection attempt #{i+1}")
+            connection_successful = False
+            session_established = False
+            
+            def on_message(ws, message):
+                try:
+                    data = json.loads(message)
+                    if data.get('type') == 'connection_established':
+                        nonlocal session_established
+                        session_established = True
+                        print(f"   ✅ Session established: {data.get('session_id')}")
+                        # Close after establishing connection
+                        time.sleep(1)
+                        ws.close()
+                except Exception as e:
+                    print(f"   ❌ Message error: {e}")
+
+            def on_error(ws, error):
+                print(f"   ❌ WebSocket error: {error}")
+
+            def on_close(ws, close_status_code, close_msg):
+                print(f"   🔌 Connection #{i+1} closed: {close_status_code}")
+
+            def on_open(ws):
+                nonlocal connection_successful
+                connection_successful = True
+                print(f"   ✅ Connection #{i+1} opened")
+
+            try:
+                ws = websocket.WebSocketApp(
+                    ws_url,
+                    on_open=on_open,
+                    on_message=on_message,
+                    on_error=on_error,
+                    on_close=on_close
+                )
+                
+                ws_thread = threading.Thread(target=ws.run_forever)
+                ws_thread.daemon = True
+                ws_thread.start()
+                
+                time.sleep(3)
+                
+                if connection_successful and session_established:
+                    successful_connections += 1
+                    print(f"   ✅ Connection #{i+1} successful")
+                else:
+                    print(f"   ❌ Connection #{i+1} failed")
+                
+            except Exception as e:
+                print(f"   ❌ Connection #{i+1} exception: {str(e)}")
+        
+        self.tests_run += 1
+        
+        if successful_connections >= 2:  # At least 2 out of 3 should succeed
+            self.tests_passed += 1
+            print(f"   ✅ WebSocket lifecycle test PASSED ({successful_connections}/3 connections)")
+            return True
+        else:
+            print(f"   ❌ WebSocket lifecycle test FAILED ({successful_connections}/3 connections)")
             return False
 
     def test_widget_config_with_voice_settings(self):
