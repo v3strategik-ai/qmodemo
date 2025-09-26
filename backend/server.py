@@ -32,7 +32,6 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# Define Models
 class StatusCheck(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_name: str
@@ -54,18 +53,50 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_demo: bool = False
 
+class ConversationSession(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str = "New Conversation"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_active: bool = True
+    context_summary: str = ""
+    message_count: int = 0
+
 class ChatMessage(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
+    session_id: str
     message: str
     response: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     rating: Optional[str] = None
     feedback: Optional[str] = None
+    ai_personality: str = "Professional Assistant"
+    response_time_ms: Optional[int] = None
+    is_streaming: bool = False
+
+class StreamingChatRequest(BaseModel):
+    user_id: str
+    session_id: Optional[str] = None
+    message: str
+    personality: Optional[str] = "Professional Assistant"
 
 class ChatRequest(BaseModel):
     user_id: str
     message: str
+    session_id: Optional[str] = None
+
+class VoiceTranscriptionRequest(BaseModel):
+    user_id: str
+    session_id: Optional[str] = None
+    audio_format: str = "webm"
+
+class TTSRequest(BaseModel):
+    user_id: str
+    text: str
+    voice: str = "alloy"
+    speed: float = 1.0
 
 class ChatRating(BaseModel):
     message_id: str
@@ -77,6 +108,15 @@ class ChatFeedback(BaseModel):
     rating: str
     feedback: str
 
+class AIPersonality(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    system_prompt: str
+    industry: Optional[str] = None
+    traits: List[str] = []
+    example_responses: List[str] = []
+
 class WidgetConfig(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
@@ -86,6 +126,13 @@ class WidgetConfig(BaseModel):
     workflow_automations: List[str] = []
     knowledge_base_files: List[str] = []
     integration_settings: dict = {}
+    voice_settings: Dict[str, Any] = {
+        "enabled": False,
+        "voice": "alloy",
+        "speech_speed": 1.0,
+        "auto_play_responses": True
+    }
+    streaming_enabled: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class WidgetConfigCreate(BaseModel):
@@ -108,6 +155,118 @@ class KnowledgeBaseCreate(BaseModel):
     title: str
     content: str
     file_type: str = "text"
+
+# WebSocket Connection Manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+        self.user_sessions: Dict[str, str] = {}  # user_id -> session_id
+    
+    async def connect(self, websocket: WebSocket, user_id: str, session_id: str):
+        await websocket.accept()
+        connection_id = f"{user_id}_{session_id}"
+        self.active_connections[connection_id] = websocket
+        self.user_sessions[user_id] = session_id
+        logging.info(f"User {user_id} connected to session {session_id}")
+    
+    def disconnect(self, user_id: str, session_id: str = None):
+        if session_id:
+            connection_id = f"{user_id}_{session_id}"
+        else:
+            # Find connection by user_id if session_id not provided
+            connection_id = None
+            for conn_id in self.active_connections:
+                if conn_id.startswith(f"{user_id}_"):
+                    connection_id = conn_id
+                    break
+        
+        if connection_id and connection_id in self.active_connections:
+            del self.active_connections[connection_id]
+            if user_id in self.user_sessions:
+                del self.user_sessions[user_id]
+            logging.info(f"User {user_id} disconnected from session {session_id}")
+    
+    async def send_message(self, message: Dict, user_id: str, session_id: str):
+        connection_id = f"{user_id}_{session_id}"
+        if connection_id in self.active_connections:
+            websocket = self.active_connections[connection_id]
+            try:
+                await websocket.send_text(json.dumps(message))
+                return True
+            except Exception as e:
+                logging.error(f"Error sending message to {connection_id}: {e}")
+                self.disconnect(user_id, session_id)
+                return False
+        return False
+    
+    async def stream_response(self, response_generator, user_id: str, session_id: str):
+        """Stream AI response chunks to client"""
+        connection_id = f"{user_id}_{session_id}"
+        if connection_id in self.active_connections:
+            websocket = self.active_connections[connection_id]
+            try:
+                async for chunk in response_generator:
+                    message = {
+                        "type": "response_chunk",
+                        "chunk": chunk,
+                        "session_id": session_id
+                    }
+                    await websocket.send_text(json.dumps(message))
+                
+                # Send completion message
+                completion_message = {
+                    "type": "response_complete",
+                    "session_id": session_id
+                }
+                await websocket.send_text(json.dumps(completion_message))
+                return True
+            except Exception as e:
+                logging.error(f"Error streaming to {connection_id}: {e}")
+                self.disconnect(user_id, session_id)
+                return False
+        return False
+
+# Global connection manager
+manager = ConnectionManager()
+
+# AI Personality definitions
+DEFAULT_PERSONALITIES = {
+    "Professional Assistant": {
+        "name": "Professional Assistant",
+        "description": "A knowledgeable and efficient business assistant",
+        "system_prompt": """You are modQ - a Modular Quantum Business Intelligence assistant. You are professional, efficient, and provide clear, actionable business advice. You focus on practical solutions and data-driven insights.""",
+        "industry": None,
+        "traits": ["Professional", "Efficient", "Data-driven", "Clear communication"]
+    },
+    "Strategic Advisor": {
+        "name": "Strategic Advisor",
+        "description": "A senior executive advisor focused on strategic planning and growth",
+        "system_prompt": """You are a strategic business advisor with decades of executive experience. You think long-term, focus on competitive advantages, market positioning, and strategic growth opportunities. You provide high-level strategic insights and ask probing questions to help executives make better decisions.""",
+        "industry": None,
+        "traits": ["Strategic thinking", "Executive experience", "Market analysis", "Growth-focused"]
+    },
+    "Sales Manager": {
+        "name": "Sales Manager",
+        "description": "An experienced sales professional focused on revenue growth and customer relationships",
+        "system_prompt": """You are an expert Sales Manager with extensive experience in B2B and B2C sales. You focus on pipeline management, customer relationships, closing techniques, and revenue optimization. You provide practical sales advice, help with objection handling, and suggest strategies to improve conversion rates.""",
+        "industry": "Sales",
+        "traits": ["Revenue-focused", "Customer-centric", "Results-driven", "Relationship building"]
+    },
+    "Tech Innovator": {
+        "name": "Tech Innovator", 
+        "description": "A technology expert focused on innovation and digital transformation",
+        "system_prompt": """You are a technology innovation expert with deep knowledge of emerging technologies, digital transformation, and tech trends. You help businesses leverage technology for competitive advantage, suggest innovative solutions, and guide digital strategy decisions.""",
+        "industry": "Technology",
+        "traits": ["Innovation-focused", "Tech-savvy", "Future-thinking", "Problem solver"]
+    },
+    "Financial Analyst": {
+        "name": "Financial Analyst",
+        "description": "A finance expert focused on analysis, budgeting, and financial strategy",
+        "system_prompt": """You are a senior Financial Analyst with expertise in financial modeling, budgeting, investment analysis, and business valuation. You provide data-driven financial insights, help with financial planning, and offer advice on cost optimization and investment decisions.""",
+        "industry": "Finance",
+        "traits": ["Analytical", "Detail-oriented", "Risk-aware", "Numbers-focused"]
+    }
+}
 
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
