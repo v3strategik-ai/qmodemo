@@ -611,18 +611,203 @@ async def get_chat_history(user_id: str, session_id: Optional[str] = None, limit
 @api_router.post("/voice/transcribe")
 async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
     """Fallback endpoint for audio transcription - currently disabled due to API key incompatibility"""
-    raise HTTPException(
-        status_code=501, 
-        detail="Voice transcription temporarily disabled. OpenAI API key required for Whisper integration. Emergent LLM key is not compatible with OpenAI voice APIs."
-    )
+    try:
+        raise HTTPException(
+            status_code=501, 
+            detail="Voice transcription temporarily disabled. OpenAI API key required for Whisper integration. Emergent LLM key is not compatible with OpenAI voice APIs."
+        )
+    except Exception as e:
+        logging.error(f"Audio transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 @api_router.post("/voice/synthesize")
 async def synthesize_speech(request: TTSRequest):
     """Fallback endpoint for text-to-speech - currently disabled due to API key incompatibility"""
-    raise HTTPException(
-        status_code=501, 
-        detail="Text-to-speech temporarily disabled. OpenAI API key required for TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs."
-    )
+    try:
+        raise HTTPException(
+            status_code=501, 
+            detail="Text-to-speech temporarily disabled. OpenAI API key required for TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs."
+        )
+    except Exception as e:
+        logging.error(f"TTS error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {str(e)}")
+
+# Integration Management routes
+@api_router.get("/integrations/user/{user_id}", response_model=List[UserIntegration])
+async def get_user_integrations(user_id: str):
+    """Get all integrations for a specific user"""
+    try:
+        integrations = await db.user_integrations.find({"user_id": user_id}).to_list(100)
+        return [UserIntegration(**integration) for integration in integrations]
+    except Exception as e:
+        logging.error(f"Get user integrations error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve user integrations")
+
+@api_router.post("/integrations/connect", response_model=UserIntegration)
+async def connect_integration(integration_request: IntegrationConnect):
+    """Connect a new integration for a user"""
+    try:
+        # Check if integration already exists
+        existing = await db.user_integrations.find_one({
+            "user_id": integration_request.user_id,
+            "integration_id": integration_request.integration_id
+        })
+        
+        if existing:
+            raise HTTPException(status_code=409, detail="Integration already exists")
+        
+        # Create new integration record
+        integration = UserIntegration(
+            user_id=integration_request.user_id,
+            integration_id=integration_request.integration_id,
+            integration_name=integration_request.integration_name,
+            configuration=integration_request.configuration,
+            status="connecting"
+        )
+        
+        await db.user_integrations.insert_one(integration.dict())
+        
+        # In a real implementation, this would initiate the OAuth flow or API connection
+        # For demo purposes, we'll simulate a successful connection after a delay
+        
+        logging.info(f"User {integration_request.user_id} connecting to {integration_request.integration_name}")
+        
+        return integration
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Connect integration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to connect integration")
+
+@api_router.delete("/integrations/disconnect")
+async def disconnect_integration(integration_request: IntegrationDisconnect):
+    """Disconnect an integration for a user"""
+    try:
+        result = await db.user_integrations.delete_one({
+            "user_id": integration_request.user_id,
+            "integration_id": integration_request.integration_id
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Integration not found")
+        
+        logging.info(f"User {integration_request.user_id} disconnected from {integration_request.integration_id}")
+        
+        return {"status": "success", "message": "Integration disconnected"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Disconnect integration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to disconnect integration")
+
+@api_router.post("/integrations/sync/{integration_id}")
+async def sync_integration(integration_id: str, user_id: str):
+    """Manually trigger synchronization for an integration"""
+    try:
+        integration = await db.user_integrations.find_one({
+            "user_id": user_id,
+            "integration_id": integration_id
+        })
+        
+        if not integration:
+            raise HTTPException(status_code=404, detail="Integration not found")
+        
+        if integration["status"] != "connected":
+            raise HTTPException(status_code=400, detail="Integration is not connected")
+        
+        # Update last sync time
+        await db.user_integrations.update_one(
+            {"user_id": user_id, "integration_id": integration_id},
+            {"$set": {"last_sync": datetime.now(timezone.utc)}}
+        )
+        
+        # In a real implementation, this would trigger the actual sync process
+        logging.info(f"Sync triggered for integration {integration_id} by user {user_id}")
+        
+        return {"status": "success", "message": "Sync initiated"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Sync integration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to sync integration")
+
+@api_router.get("/integrations/available")
+async def get_available_integrations():
+    """Get list of available integrations in the marketplace"""
+    try:
+        # In a real implementation, this would come from a database
+        # For now, returning static data that matches the frontend
+        available_integrations = [
+            {
+                "id": "slack",
+                "name": "Slack",
+                "category": "communication",
+                "description": "Connect your team communication with AI-powered insights and automated responses.",
+                "pricing": "Free",
+                "popularity": 5,
+                "setup_complexity": "Easy",
+                "status": "available"
+            },
+            {
+                "id": "salesforce",
+                "name": "Salesforce",
+                "category": "crm", 
+                "description": "Sync customer data and leverage AI insights for better sales performance.",
+                "pricing": "Premium",
+                "popularity": 5,
+                "setup_complexity": "Medium",
+                "status": "available"
+            },
+            {
+                "id": "google-workspace",
+                "name": "Google Workspace",
+                "category": "productivity",
+                "description": "Integrate with Gmail, Drive, Calendar, and other Google services.",
+                "pricing": "Free",
+                "popularity": 4,
+                "setup_complexity": "Easy",
+                "status": "available"
+            },
+            {
+                "id": "microsoft-365",
+                "name": "Microsoft 365",
+                "category": "productivity",
+                "description": "Connect with Outlook, Teams, OneDrive, and Office applications.",
+                "pricing": "Free",
+                "popularity": 4,
+                "setup_complexity": "Easy", 
+                "status": "available"
+            },
+            {
+                "id": "stripe",
+                "name": "Stripe",
+                "category": "payments",
+                "description": "Payment processing with AI-powered fraud detection and revenue insights.",
+                "pricing": "Per transaction",
+                "popularity": 5,
+                "setup_complexity": "Medium",
+                "status": "available"
+            },
+            {
+                "id": "zapier",
+                "name": "Zapier", 
+                "category": "automation",
+                "description": "Connect modQ with 5000+ apps through automated workflows.",
+                "pricing": "Freemium",
+                "popularity": 4,
+                "setup_complexity": "Easy",
+                "status": "available"
+            }
+        ]
+        
+        return {"integrations": available_integrations}
+        
+    except Exception as e:
+        logging.error(f"Get available integrations error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve available integrations")
 
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
