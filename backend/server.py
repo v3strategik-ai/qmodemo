@@ -26,7 +26,46 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
-app = FastAPI()
+app = FastAPI(title="modQ API", description="Modular Quantum Business Intelligence API", version="1.0")
+
+# WebSocket endpoint - must be on main app, not API router
+@app.websocket("/ws/chat/{user_id}")
+async def websocket_chat_endpoint(websocket: WebSocket, user_id: str):
+    session_id = str(uuid.uuid4())
+    await manager.connect(websocket, user_id, session_id)
+    
+    try:
+        # Send initial connection confirmation
+        await manager.send_message({
+            "type": "connection_established",
+            "session_id": session_id,
+            "user_id": user_id
+        }, user_id, session_id)
+        
+        while True:
+            # Receive message from client
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+            
+            message_type = message_data.get("type")
+            
+            if message_type == "chat_message":
+                # Handle streaming chat message
+                await handle_streaming_chat(message_data, user_id, session_id)
+            
+            elif message_type == "voice_transcription":
+                # Handle voice input
+                await handle_voice_transcription(message_data, user_id, session_id)
+            
+            elif message_type == "tts_request":
+                # Handle text-to-speech request
+                await handle_tts_request(message_data, user_id, session_id)
+                
+    except WebSocketDisconnect:
+        manager.disconnect(user_id, session_id)
+    except Exception as e:
+        logging.error(f"WebSocket error for user {user_id}: {e}")
+        manager.disconnect(user_id, session_id)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
