@@ -11,10 +11,14 @@ from datetime import datetime
 class ModQAPITester:
     def __init__(self, base_url="https://quantum-crm.preview.emergentagent.com/api"):
         self.base_url = base_url
+        self.ws_base_url = base_url.replace("https://", "wss://").replace("/api", "")
         self.tests_run = 0
         self.tests_passed = 0
         self.test_user_id = None
         self.test_user_data = None
+        self.test_session_id = None
+        self.websocket_messages = []
+        self.websocket_connected = False
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
