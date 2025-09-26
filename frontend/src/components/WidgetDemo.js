@@ -1138,63 +1138,13 @@ const WidgetDemo = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-300">Voice Features</p>
-                        <p className="text-sm text-gray-400">Enable voice input and output</p>
+                        <p className="text-sm text-gray-400">Coming in future updates</p>
                       </div>
                       <Switch 
-                        checked={config.voice_settings?.enabled || false}
-                        onCheckedChange={(value) => {
-                          const newVoiceSettings = {
-                            ...config.voice_settings,
-                            enabled: value
-                          };
-                          setConfig({...config, voice_settings: newVoiceSettings});
-                        }}
+                        checked={false}
+                        disabled={true}
                       />
                     </div>
-                    
-                    {/* Voice Settings */}
-                    {config.voice_settings?.enabled && (
-                      <div className="space-y-3 pt-3 border-t border-white/10">
-                        <h4 className="font-medium text-gray-300">Voice Settings</h4>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-2">Voice</label>
-                          <Select 
-                            value={config.voice_settings.voice}
-                            onValueChange={(value) => {
-                              const newVoiceSettings = {...config.voice_settings, voice: value};
-                              setConfig({...config, voice_settings: newVoiceSettings});
-                            }}
-                          >
-                            <SelectTrigger className="glass neon-border">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="glass">
-                              <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
-                              <SelectItem value="echo">Echo (Male)</SelectItem>
-                              <SelectItem value="fable">Fable (British Male)</SelectItem>
-                              <SelectItem value="onyx">Onyx (Deep Male)</SelectItem>
-                              <SelectItem value="nova">Nova (Female)</SelectItem>
-                              <SelectItem value="shimmer">Shimmer (Female)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-400">Auto-play Responses</p>
-                            <p className="text-xs text-gray-500">Automatically play AI responses</p>
-                          </div>
-                          <Switch 
-                            checked={config.voice_settings.auto_play_responses}
-                            onCheckedChange={(value) => {
-                              const newVoiceSettings = {...config.voice_settings, auto_play_responses: value};
-                              setConfig({...config, voice_settings: newVoiceSettings});
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
                     
                     <div className="flex items-center justify-between">
                       <div>
