@@ -281,9 +281,14 @@ const WidgetDemo = () => {
     }
   };
 
-  const loadChatHistory = async () => {
+  const loadChatHistory = async (sessionId = currentSessionId) => {
     try {
-      const response = await axios.get(`${API}/chat/history/${currentUser.id}`);
+      let url = `${API}/chat/history/${currentUser.id}`;
+      if (sessionId) {
+        url += `?session_id=${sessionId}`;
+      }
+      
+      const response = await axios.get(url);
       setMessages(response.data.reverse());
     } catch (error) {
       console.error('Failed to load chat history:', error);
