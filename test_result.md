@@ -107,11 +107,11 @@
 ## backend:
   - task: "Real-time Streaming AI Responses Implementation"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
@@ -119,6 +119,9 @@
         - working: "NA"
           agent: "main"
           comment: "Implemented WebSocket endpoints, connection manager, and streaming response handling"
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL: WebSocket endpoint /ws/chat/{user_id} not accessible - returns HTML instead of accepting WebSocket connections. Routing issue in deployment environment. REST endpoints work fine but real-time streaming via WebSocket is broken."
 
   - task: "Multi-conversation Context Management"
     implemented: true
