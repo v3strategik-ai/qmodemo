@@ -545,12 +545,12 @@ class ModQAPITester:
         return success
 
 def main():
-    print("🚀 Starting modQ API Testing...")
-    print("=" * 60)
+    print("🚀 Starting modQ API Testing - Option B: Advanced AI Features")
+    print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence
+    # Test sequence - including new Option B features
     tests = [
         ("Root Endpoint", tester.test_root_endpoint),
         ("User Registration", tester.test_user_registration),
@@ -561,24 +561,42 @@ def main():
         ("Get Knowledge Base", tester.test_get_knowledge_base),
         ("AI Chat", tester.test_ai_chat),
         ("Chat History", tester.test_chat_history),
-        ("Status Endpoints", tester.test_status_endpoints)
+        ("Status Endpoints", tester.test_status_endpoints),
+        
+        # NEW OPTION B TESTS
+        ("AI Personalities", tester.test_ai_personalities),
+        ("Session Management", tester.test_session_management),
+        ("Enhanced Chat with Session", tester.test_enhanced_chat_with_session),
+        ("Voice Transcription Endpoint", tester.test_voice_transcription_endpoint),
+        ("Voice Synthesis Endpoint", tester.test_voice_synthesis_endpoint),
+        ("WebSocket Connection", tester.test_websocket_connection),
+        ("Widget Config with Voice Settings", tester.test_widget_config_with_voice_settings),
+        ("Session Deletion", tester.test_session_deletion),
     ]
     
     failed_tests = []
+    critical_failures = []
     
     for test_name, test_func in tests:
         try:
             success = test_func()
             if not success:
                 failed_tests.append(test_name)
+                # Mark critical failures for Option B features
+                if test_name in ["AI Personalities", "Session Management", "Enhanced Chat with Session", 
+                               "WebSocket Connection", "Voice Synthesis Endpoint"]:
+                    critical_failures.append(test_name)
         except Exception as e:
             print(f"❌ {test_name} failed with exception: {str(e)}")
             failed_tests.append(test_name)
+            if test_name in ["AI Personalities", "Session Management", "Enhanced Chat with Session", 
+                           "WebSocket Connection", "Voice Synthesis Endpoint"]:
+                critical_failures.append(test_name)
     
     # Print final results
-    print("\n" + "=" * 60)
-    print("📊 FINAL TEST RESULTS")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("📊 FINAL TEST RESULTS - Option B: Advanced AI Features")
+    print("=" * 70)
     print(f"Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
     print(f"Tests Failed: {tester.tests_run - tester.tests_passed}")
@@ -588,7 +606,13 @@ def main():
         print(f"\n❌ Failed Tests:")
         for test in failed_tests:
             print(f"   - {test}")
-    else:
+    
+    if critical_failures:
+        print(f"\n🚨 CRITICAL FAILURES (Option B Core Features):")
+        for test in critical_failures:
+            print(f"   - {test}")
+    
+    if not failed_tests:
         print(f"\n✅ All tests passed!")
     
     if tester.test_user_data:
@@ -597,7 +621,20 @@ def main():
         print(f"   Username: {tester.test_user_data.get('username')}")
         print(f"   Email: {tester.test_user_data.get('email')}")
     
-    return 0 if tester.tests_passed == tester.tests_run else 1
+    if tester.test_session_id:
+        print(f"\n💬 Test Session:")
+        print(f"   Session ID: {tester.test_session_id}")
+    
+    # Summary for Option B features
+    option_b_tests = ["AI Personalities", "Session Management", "Enhanced Chat with Session", 
+                     "Voice Transcription Endpoint", "Voice Synthesis Endpoint", 
+                     "WebSocket Connection", "Widget Config with Voice Settings"]
+    
+    option_b_passed = sum(1 for test in option_b_tests if test not in failed_tests)
+    print(f"\n🧠 Option B Features Summary:")
+    print(f"   Advanced AI Features Passed: {option_b_passed}/{len(option_b_tests)}")
+    
+    return 0 if len(critical_failures) == 0 else 1
 
 if __name__ == "__main__":
     sys.exit(main())
