@@ -195,6 +195,28 @@ class KnowledgeBaseCreate(BaseModel):
     content: str
     file_type: str = "text"
 
+class UserIntegration(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    integration_id: str
+    integration_name: str
+    status: str = "connecting"  # connecting, connected, error, disconnected
+    connected_at: Optional[datetime] = None
+    last_sync: Optional[datetime] = None
+    configuration: dict = {}
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class IntegrationConnect(BaseModel):
+    user_id: str
+    integration_id: str
+    integration_name: str
+    configuration: dict = {}
+
+class IntegrationDisconnect(BaseModel):
+    user_id: str
+    integration_id: str
+
 # WebSocket Connection Manager
 class ConnectionManager:
     def __init__(self):
