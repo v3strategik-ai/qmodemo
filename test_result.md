@@ -161,11 +161,11 @@
 
   - task: "Voice Input/Output Backend Integration"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
@@ -173,6 +173,9 @@
         - working: "NA"
           agent: "main"
           comment: "Integrated OpenAI Whisper for transcription and TTS for speech synthesis with WebSocket and REST fallback endpoints"
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL: Voice endpoints failing due to API key incompatibility. Emergent LLM key format 'sk-emergent-*' not compatible with OpenAI Whisper/TTS APIs which expect 'sk-proj-*' format. Error: 'Incorrect API key provided'. Both POST /api/voice/transcribe and POST /api/voice/synthesize return 500 errors. Need proper OpenAI API key for voice features."
 
 ## frontend:
   - task: "Streaming AI Response UI"
