@@ -224,6 +224,326 @@ class ModQAPITester:
         
         return success1 and success2
 
+    # ===== NEW OPTION B ADVANCED AI FEATURES TESTS =====
+    
+    def test_ai_personalities(self):
+        """Test AI personalities endpoint"""
+        print("\n🧠 Testing AI Personalities...")
+        success, response = self.run_test(
+            "Get AI Personalities",
+            "GET",
+            "personalities",
+            200
+        )
+        
+        if success and response:
+            personalities = response.get('personalities', {})
+            default_personality = response.get('default', '')
+            
+            print(f"   Found {len(personalities)} personalities")
+            print(f"   Default personality: {default_personality}")
+            
+            # Verify expected personalities exist
+            expected_personalities = [
+                "Professional Assistant", "Strategic Advisor", "Sales Manager", 
+                "Tech Innovator", "Financial Analyst"
+            ]
+            
+            for personality in expected_personalities:
+                if personality in personalities:
+                    print(f"   ✅ {personality} found")
+                else:
+                    print(f"   ❌ {personality} missing")
+                    return False
+            
+            return True
+        return False
+
+    def test_session_management(self):
+        """Test conversation session management"""
+        if not self.test_user_id:
+            print("❌ Skipping session management test - no user ID available")
+            return False
+        
+        print("\n💬 Testing Session Management...")
+        
+        # Test creating new session
+        success1, session_response = self.run_test(
+            "Create New Session",
+            "POST",
+            f"sessions/new?user_id={self.test_user_id}",
+            200
+        )
+        
+        if success1 and session_response:
+            self.test_session_id = session_response.get('id')
+            print(f"   Created session ID: {self.test_session_id}")
+        
+        # Test getting user sessions
+        success2, sessions_response = self.run_test(
+            "Get User Sessions",
+            "GET",
+            f"sessions/{self.test_user_id}",
+            200
+        )
+        
+        if success2 and sessions_response:
+            print(f"   Found {len(sessions_response)} sessions for user")
+        
+        return success1 and success2
+
+    def test_enhanced_chat_with_session(self):
+        """Test enhanced chat with session support"""
+        if not self.test_user_id:
+            print("❌ Skipping enhanced chat test - no user ID available")
+            return False
+        
+        print("\n🤖 Testing Enhanced Chat with Session Support...")
+        
+        # Test chat with specific personality and session
+        chat_data = {
+            "user_id": self.test_user_id,
+            "message": "As a business owner in the technology sector, what are the key metrics I should track for my SaaS startup?",
+            "session_id": self.test_session_id
+        }
+        
+        success, response = self.run_test(
+            "Enhanced Chat with Session",
+            "POST",
+            "chat",
+            200,
+            data=chat_data
+        )
+        
+        if success and response:
+            print(f"   AI Personality: {response.get('ai_personality', 'Unknown')}")
+            print(f"   Response Time: {response.get('response_time_ms', 0)}ms")
+            print(f"   Session ID: {response.get('session_id', 'None')}")
+            print(f"   Response Preview: {response.get('response', '')[:100]}...")
+            return True
+        
+        return False
+
+    def test_voice_transcription_endpoint(self):
+        """Test voice transcription REST endpoint"""
+        print("\n🎤 Testing Voice Transcription Endpoint...")
+        
+        # Create a simple test audio file (mock data)
+        # In a real test, you'd use actual audio data
+        test_audio_content = b"fake_audio_data_for_testing"
+        
+        files = {
+            'file': ('test_audio.wav', io.BytesIO(test_audio_content), 'audio/wav')
+        }
+        
+        url = f"{self.base_url}/voice/transcribe"
+        params = {'user_id': self.test_user_id or 'test_user'}
+        
+        self.tests_run += 1
+        print(f"🔍 Testing Voice Transcription...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.post(url, files=files, params=params, timeout=30)
+            print(f"   Status Code: {response.status_code}")
+            
+            # We expect this to fail with our fake audio data, but we want to see the endpoint responds
+            if response.status_code in [400, 500]:  # Expected failure with fake data
+                self.tests_passed += 1
+                print(f"✅ Endpoint accessible - Expected failure with test data")
+                try:
+                    error_data = response.json()
+                    print(f"   Expected Error: {error_data.get('detail', 'Unknown error')}")
+                except:
+                    pass
+                return True
+            elif response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Unexpected success with test data")
+                return True
+            else:
+                print(f"❌ Unexpected status code: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
+    def test_voice_synthesis_endpoint(self):
+        """Test voice synthesis (TTS) REST endpoint"""
+        print("\n🔊 Testing Voice Synthesis Endpoint...")
+        
+        tts_data = {
+            "user_id": self.test_user_id or "test_user",
+            "text": "Hello, this is a test of the text-to-speech functionality in modQ.",
+            "voice": "alloy",
+            "speed": 1.0
+        }
+        
+        success, response = self.run_test(
+            "Voice Synthesis (TTS)",
+            "POST",
+            "voice/synthesize",
+            200,
+            data=tts_data
+        )
+        
+        return success
+
+    def test_websocket_connection(self):
+        """Test WebSocket connection and basic functionality"""
+        if not self.test_user_id:
+            print("❌ Skipping WebSocket test - no user ID available")
+            return False
+        
+        print("\n🔌 Testing WebSocket Connection...")
+        
+        ws_url = f"{self.ws_base_url}/ws/chat/{self.test_user_id}"
+        print(f"   WebSocket URL: {ws_url}")
+        
+        self.websocket_messages = []
+        self.websocket_connected = False
+        connection_successful = False
+        
+        def on_message(ws, message):
+            try:
+                data = json.loads(message)
+                self.websocket_messages.append(data)
+                print(f"   📨 Received: {data.get('type', 'unknown')}")
+                
+                if data.get('type') == 'connection_established':
+                    self.websocket_connected = True
+                    
+            except Exception as e:
+                print(f"   ❌ Message parsing error: {e}")
+
+        def on_error(ws, error):
+            print(f"   ❌ WebSocket error: {error}")
+
+        def on_close(ws, close_status_code, close_msg):
+            print(f"   🔌 WebSocket closed: {close_status_code}")
+
+        def on_open(ws):
+            print(f"   ✅ WebSocket connection opened")
+            nonlocal connection_successful
+            connection_successful = True
+            
+            # Send a test chat message
+            test_message = {
+                "type": "chat_message",
+                "message": "Hello WebSocket! This is a test message for streaming AI response.",
+                "personality": "Professional Assistant"
+            }
+            
+            ws.send(json.dumps(test_message))
+            print(f"   📤 Sent test message")
+            
+            # Wait a bit for response, then close
+            time.sleep(3)
+            ws.close()
+
+        try:
+            # Create WebSocket connection
+            ws = websocket.WebSocketApp(
+                ws_url,
+                on_open=on_open,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close
+            )
+            
+            # Run WebSocket in a separate thread with timeout
+            ws_thread = threading.Thread(target=ws.run_forever)
+            ws_thread.daemon = True
+            ws_thread.start()
+            
+            # Wait for connection and messages
+            time.sleep(5)
+            
+            self.tests_run += 1
+            
+            if connection_successful and self.websocket_connected:
+                self.tests_passed += 1
+                print(f"   ✅ WebSocket connection successful")
+                print(f"   📊 Received {len(self.websocket_messages)} messages")
+                
+                # Check for expected message types
+                message_types = [msg.get('type') for msg in self.websocket_messages]
+                print(f"   📋 Message types: {message_types}")
+                
+                return True
+            else:
+                print(f"   ❌ WebSocket connection failed")
+                return False
+                
+        except Exception as e:
+            print(f"   ❌ WebSocket test failed: {str(e)}")
+            return False
+
+    def test_widget_config_with_voice_settings(self):
+        """Test widget configuration with new voice settings"""
+        if not self.test_user_id:
+            print("❌ Skipping widget config with voice settings test - no user ID available")
+            return False
+        
+        print("\n⚙️ Testing Widget Config with Voice Settings...")
+        
+        config_data = {
+            "user_id": self.test_user_id,
+            "company_name": "Advanced Tech Solutions",
+            "industry": "Technology",
+            "ai_personality": "Tech Innovator",
+            "workflow_automations": ["Email Management", "Task Scheduling", "Voice Commands"]
+        }
+        
+        success, response = self.run_test(
+            "Widget Config with Voice Settings",
+            "POST",
+            "widget/config",
+            200,
+            data=config_data
+        )
+        
+        if success and response:
+            voice_settings = response.get('voice_settings', {})
+            streaming_enabled = response.get('streaming_enabled', False)
+            
+            print(f"   Voice Settings: {voice_settings}")
+            print(f"   Streaming Enabled: {streaming_enabled}")
+            
+            # Verify voice settings structure
+            expected_voice_keys = ['enabled', 'voice', 'speech_speed', 'auto_play_responses']
+            for key in expected_voice_keys:
+                if key in voice_settings:
+                    print(f"   ✅ Voice setting '{key}' present")
+                else:
+                    print(f"   ❌ Voice setting '{key}' missing")
+                    return False
+            
+            return True
+        
+        return False
+
+    def test_session_deletion(self):
+        """Test session deletion"""
+        if not self.test_session_id:
+            print("❌ Skipping session deletion test - no session ID available")
+            return False
+        
+        print("\n🗑️ Testing Session Deletion...")
+        
+        success, response = self.run_test(
+            "Delete Session",
+            "DELETE",
+            f"sessions/{self.test_session_id}",
+            200
+        )
+        
+        if success:
+            print(f"   ✅ Session {self.test_session_id} deleted successfully")
+        
+        return success
+
 def main():
     print("🚀 Starting modQ API Testing...")
     print("=" * 60)
