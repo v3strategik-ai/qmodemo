@@ -737,6 +737,14 @@ async def get_users():
 @api_router.post("/widget/config", response_model=WidgetConfig)
 async def create_widget_config(config_data: WidgetConfigCreate):
     config_dict = config_data.dict()
+    # Add default voice settings for new configs
+    config_dict["voice_settings"] = {
+        "enabled": False,
+        "voice": "alloy", 
+        "speech_speed": 1.0,
+        "auto_play_responses": True
+    }
+    config_dict["streaming_enabled"] = True
     config_obj = WidgetConfig(**config_dict)
     await db.widget_configs.insert_one(config_obj.dict())
     return config_obj
