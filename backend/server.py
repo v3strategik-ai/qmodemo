@@ -307,6 +307,214 @@ DEFAULT_PERSONALITIES = {
     }
 }
 
+async def handle_streaming_chat(message_data: Dict, user_id: str, session_id: str):
+    """Handle streaming chat messages with real-time AI responses"""
+    try:
+        message_text = message_data.get("message", "")
+        personality = message_data.get("personality", "Professional Assistant")
+        
+        # Get or create conversation session
+        conversation_session = await get_or_create_session(user_id, session_id)
+        
+        # Get user config and knowledge base
+        user_config = await db.widget_configs.find_one({"user_id": user_id})
+        kb_items = await db.knowledge_base.find({"user_id": user_id}).to_list(100)
+        
+        # Get recent chat history for context
+        recent_chats = await db.chat_messages.find(
+            {"user_id": user_id, "session_id": session_id}
+        ).sort("timestamp", -1).limit(10).to_list(10)
+        
+        # Build context-aware system message
+        system_message = build_personality_prompt(personality, user_config, kb_items, recent_chats)
+        
+        # Send typing indicator
+        await manager.send_message({
+            "type": "typing_start",
+            "session_id": session_id
+        }, user_id, session_id)
+        
+        # Initialize streaming LLM chat
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        chat = LlmChat(
+            api_key=os.environ.get('EMERGENT_LLM_KEY'),
+            session_id=f"modq-{user_id}-{session_id}",
+            system_message=system_message
+        ).with_model("openai", "gpt-4o")
+        
+        # Create user message
+        user_message = UserMessage(text=message_text)
+        
+        # Stream AI response
+        response_chunks = []
+        full_response = ""
+        
+        # Start streaming response
+        await manager.send_message({
+            "type": "response_start",
+            "session_id": session_id,
+            "message": message_text
+        }, user_id, session_id)
+        
+        async def response_generator():
+            nonlocal full_response
+            response = await chat.send_message(user_message)
+            full_response = response
+            
+            # Simulate streaming by chunking the response
+            words = response.split()
+            chunk_size = 3  # 3 words per chunk
+            
+            for i in range(0, len(words), chunk_size):
+                chunk = " ".join(words[i:i + chunk_size])
+                if i + chunk_size < len(words):
+                    chunk += " "
+                yield chunk
+                await asyncio.sleep(0.1)  # Small delay for realistic streaming
+        
+        # Stream response to client
+        await manager.stream_response(response_generator(), user_id, session_id)
+        
+        # Save complete message to database
+        chat_obj = ChatMessage(
+            user_id=user_id,
+            session_id=session_id,
+            message=message_text,
+            response=full_response,
+            ai_personality=personality,
+            is_streaming=True
+        )
+        
+        await db.chat_messages.insert_one(chat_obj.dict())
+        
+        # Update session
+        await db.conversation_sessions.update_one(
+            {"id": session_id},
+            {
+                "$set": {
+                    "updated_at": datetime.now(timezone.utc),
+                    "message_count": await db.chat_messages.count_documents({"session_id": session_id})
+                }
+            }
+        )
+        
+        # Send completion with message ID for rating
+        await manager.send_message({
+            "type": "message_complete",
+            "session_id": session_id,
+            "message_id": chat_obj.id,
+            "full_response": full_response
+        }, user_id, session_id)
+        
+    except Exception as e:
+        logging.error(f"Streaming chat error: {str(e)}")
+        await manager.send_message({
+            "type": "error",
+            "message": "Failed to process chat message",
+            "session_id": session_id
+        }, user_id, session_id)
+
+async def handle_voice_transcription(message_data: Dict, user_id: str, session_id: str):
+    """Handle voice transcription - currently disabled due to API key incompatibility"""
+    try:
+        await manager.send_message({
+            "type": "transcription_error",
+            "message": "Voice transcription temporarily disabled. OpenAI API key required for Whisper integration.",
+            "session_id": session_id
+        }, user_id, session_id)
+        
+    except Exception as e:
+        logging.error(f"Voice transcription error: {str(e)}")
+        await manager.send_message({
+            "type": "transcription_error",
+            "message": f"Failed to transcribe audio: {str(e)}",
+            "session_id": session_id
+        }, user_id, session_id)
+
+async def handle_tts_request(message_data: Dict, user_id: str, session_id: str):
+    """Handle text-to-speech requests - currently disabled due to API key incompatibility"""
+    try:
+        await manager.send_message({
+            "type": "tts_error",
+            "message": "Text-to-speech temporarily disabled. OpenAI API key required for TTS integration.",
+            "session_id": session_id
+        }, user_id, session_id)
+        
+    except Exception as e:
+        logging.error(f"TTS error: {str(e)}")
+        await manager.send_message({
+            "type": "tts_error",
+            "message": f"Failed to generate speech: {str(e)}",
+            "session_id": session_id
+        }, user_id, session_id)
+
+async def get_or_create_session(user_id: str, session_id: str):
+    """Get existing session or create new one"""
+    session = await db.conversation_sessions.find_one({"id": session_id})
+    
+    if not session:
+        # Create new session
+        new_session = ConversationSession(
+            id=session_id,
+            user_id=user_id,
+            title="New Conversation"
+        )
+        await db.conversation_sessions.insert_one(new_session.dict())
+        return new_session
+    
+    return ConversationSession(**session)
+
+def build_personality_prompt(personality: str, user_config: Dict, kb_items: List, recent_chats: List) -> str:
+    """Build context-aware system message based on personality and user context"""
+    
+    # Get personality definition
+    personality_def = DEFAULT_PERSONALITIES.get(personality, DEFAULT_PERSONALITIES["Professional Assistant"])
+    
+    # Start with base personality prompt
+    system_message = personality_def["system_prompt"]
+    
+    # Add company context if available
+    if user_config:
+        system_message += f"""
+
+Company Context:
+- Company: {user_config.get('company_name', 'Unknown')}
+- Industry: {user_config.get('industry', 'General')}
+- Current AI Personality: {personality}
+
+Key Personality Traits: {', '.join(personality_def['traits'])}
+"""
+
+    # Add knowledge base context
+    if kb_items:
+        system_message += f"""
+
+Company Knowledge Base:
+{chr(10).join([f"- {item['title']}: {item['content'][:200]}..." for item in kb_items[:5]])}
+"""
+
+    # Add conversation context
+    if recent_chats:
+        system_message += f"""
+
+Recent Conversation Context:
+{chr(10).join([f"User: {chat['message']}" for chat in reversed(recent_chats[-3:])])}
+"""
+
+    system_message += """
+
+Instructions:
+- Maintain your personality throughout the conversation
+- Provide practical, actionable advice specific to the user's industry and company context
+- Reference the knowledge base when relevant to provide personalized insights  
+- Be conversational and engaging while staying professional
+- Focus on business value and ROI in your recommendations
+- Ask follow-up questions to better understand the user's specific needs
+"""
+
+    return system_message
+
 # WebSocket endpoint for real-time streaming
 @app.websocket("/ws/chat/{user_id}")
 async def websocket_chat_endpoint(websocket: WebSocket, user_id: str):
