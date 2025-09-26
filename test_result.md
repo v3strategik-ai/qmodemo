@@ -179,6 +179,9 @@
         - working: false
           agent: "testing"
           comment: "CRITICAL: Voice endpoints failing due to API key incompatibility. Emergent LLM key format 'sk-emergent-*' not compatible with OpenAI Whisper/TTS APIs which expect 'sk-proj-*' format. Error: 'Incorrect API key provided'. Both POST /api/voice/transcribe and POST /api/voice/synthesize return 500 errors. Need proper OpenAI API key for voice features."
+        - working: false
+          agent: "testing"
+          comment: "✅ FIXED: Voice endpoints now properly return 501 status with clear error messages about API key incompatibility. POST /api/voice/transcribe and POST /api/voice/synthesize both return 501 with message: 'Voice transcription/synthesis temporarily disabled. OpenAI API key required for Whisper/TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs.' This is the expected behavior given the API key limitation."
 
 ## frontend:
   - task: "Streaming AI Response UI"
