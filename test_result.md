@@ -260,9 +260,8 @@
   current_focus:
     - "Real-time Streaming AI Responses Implementation"
     - "Voice Input/Output Backend Integration"
-    - "Streaming AI Response UI"
-    - "Voice Input/Output Interface"
-  stuck_tasks: []
+  stuck_tasks: 
+    - "Voice Input/Output Backend Integration"
   test_all: true
   test_priority: "high_first"
 
