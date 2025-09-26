@@ -268,6 +268,453 @@ DEFAULT_PERSONALITIES = {
     }
 }
 
+# WebSocket endpoint for real-time streaming
+@app.websocket("/ws/chat/{user_id}")
+async def websocket_chat_endpoint(websocket: WebSocket, user_id: str):
+    session_id = str(uuid.uuid4())
+    await manager.connect(websocket, user_id, session_id)
+    
+    try:
+        # Send initial connection confirmation
+        await manager.send_message({
+            "type": "connection_established",
+            "session_id": session_id,
+            "user_id": user_id
+        }, user_id, session_id)
+        
+        while True:
+            # Receive message from client
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+            
+            message_type = message_data.get("type")
+            
+            if message_type == "chat_message":
+                # Handle streaming chat message
+                await handle_streaming_chat(message_data, user_id, session_id)
+            
+            elif message_type == "voice_transcription":
+                # Handle voice input
+                await handle_voice_transcription(message_data, user_id, session_id)
+            
+            elif message_type == "tts_request":
+                # Handle text-to-speech request
+                await handle_tts_request(message_data, user_id, session_id)
+                
+    except WebSocketDisconnect:
+        manager.disconnect(user_id, session_id)
+    except Exception as e:
+        logging.error(f"WebSocket error for user {user_id}: {e}")
+        manager.disconnect(user_id, session_id)
+
+async def handle_streaming_chat(message_data: Dict, user_id: str, session_id: str):
+    """Handle streaming chat messages with real-time AI responses"""
+    try:
+        message_text = message_data.get("message", "")
+        personality = message_data.get("personality", "Professional Assistant")
+        
+        # Get or create conversation session
+        conversation_session = await get_or_create_session(user_id, session_id)
+        
+        # Get user config and knowledge base
+        user_config = await db.widget_configs.find_one({"user_id": user_id})
+        kb_items = await db.knowledge_base.find({"user_id": user_id}).to_list(100)
+        
+        # Get recent chat history for context
+        recent_chats = await db.chat_messages.find(
+            {"user_id": user_id, "session_id": session_id}
+        ).sort("timestamp", -1).limit(10).to_list(10)
+        
+        # Build context-aware system message
+        system_message = build_personality_prompt(personality, user_config, kb_items, recent_chats)
+        
+        # Send typing indicator
+        await manager.send_message({
+            "type": "typing_start",
+            "session_id": session_id
+        }, user_id, session_id)
+        
+        # Initialize streaming LLM chat
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        chat = LlmChat(
+            api_key=os.environ.get('EMERGENT_LLM_KEY'),
+            session_id=f"modq-{user_id}-{session_id}",
+            system_message=system_message
+        ).with_model("openai", "gpt-4o")
+        
+        # Create user message
+        user_message = UserMessage(text=message_text)
+        
+        # Stream AI response
+        response_chunks = []
+        full_response = ""
+        
+        # Start streaming response
+        await manager.send_message({
+            "type": "response_start",
+            "session_id": session_id,
+            "message": message_text
+        }, user_id, session_id)
+        
+        async def response_generator():
+            nonlocal full_response
+            response = await chat.send_message(user_message)
+            full_response = response
+            
+            # Simulate streaming by chunking the response
+            words = response.split()
+            chunk_size = 3  # 3 words per chunk
+            
+            for i in range(0, len(words), chunk_size):
+                chunk = " ".join(words[i:i + chunk_size])
+                if i + chunk_size < len(words):
+                    chunk += " "
+                yield chunk
+                await asyncio.sleep(0.1)  # Small delay for realistic streaming
+        
+        # Stream response to client
+        await manager.stream_response(response_generator(), user_id, session_id)
+        
+        # Save complete message to database
+        chat_obj = ChatMessage(
+            user_id=user_id,
+            session_id=session_id,
+            message=message_text,
+            response=full_response,
+            ai_personality=personality,
+            is_streaming=True
+        )
+        
+        await db.chat_messages.insert_one(chat_obj.dict())
+        
+        # Update session
+        await db.conversation_sessions.update_one(
+            {"id": session_id},
+            {
+                "$set": {
+                    "updated_at": datetime.now(timezone.utc),
+                    "message_count": await db.chat_messages.count_documents({"session_id": session_id})
+                }
+            }
+        )
+        
+        # Send completion with message ID for rating
+        await manager.send_message({
+            "type": "message_complete",
+            "session_id": session_id,
+            "message_id": chat_obj.id,
+            "full_response": full_response
+        }, user_id, session_id)
+        
+    except Exception as e:
+        logging.error(f"Streaming chat error: {str(e)}")
+        await manager.send_message({
+            "type": "error",
+            "message": "Failed to process chat message",
+            "session_id": session_id
+        }, user_id, session_id)
+
+async def handle_voice_transcription(message_data: Dict, user_id: str, session_id: str):
+    """Handle voice transcription using OpenAI Whisper"""
+    try:
+        # Get audio data (base64 encoded)
+        audio_data = message_data.get("audio_data")
+        if not audio_data:
+            raise ValueError("No audio data provided")
+        
+        # Decode audio data
+        audio_bytes = base64.b64decode(audio_data)
+        
+        # Save temporary file
+        temp_file_path = f"/tmp/audio_{user_id}_{session_id}.webm"
+        
+        async with aiofiles.open(temp_file_path, 'wb') as f:
+            await f.write(audio_bytes)
+        
+        # Use OpenAI Whisper for transcription
+        import openai
+        client = openai.OpenAI(api_key=os.environ.get('EMERGENT_LLM_KEY'))
+        
+        with open(temp_file_path, 'rb') as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
+            )
+        
+        # Clean up temp file
+        os.remove(temp_file_path)
+        
+        # Send transcription result
+        await manager.send_message({
+            "type": "transcription_result",
+            "session_id": session_id,
+            "text": transcript,
+            "audio_duration": message_data.get("duration", 0)
+        }, user_id, session_id)
+        
+        # Automatically process as chat message if requested
+        if message_data.get("auto_process", True):
+            chat_message_data = {
+                "type": "chat_message",
+                "message": transcript,
+                "personality": message_data.get("personality", "Professional Assistant")
+            }
+            await handle_streaming_chat(chat_message_data, user_id, session_id)
+        
+    except Exception as e:
+        logging.error(f"Voice transcription error: {str(e)}")
+        await manager.send_message({
+            "type": "transcription_error",
+            "message": f"Failed to transcribe audio: {str(e)}",
+            "session_id": session_id
+        }, user_id, session_id)
+
+async def handle_tts_request(message_data: Dict, user_id: str, session_id: str):
+    """Handle text-to-speech requests"""
+    try:
+        text = message_data.get("text", "")
+        voice = message_data.get("voice", "alloy")
+        speed = message_data.get("speed", 1.0)
+        
+        if not text:
+            raise ValueError("No text provided for TTS")
+        
+        # Use OpenAI TTS
+        import openai
+        client = openai.OpenAI(api_key=os.environ.get('EMERGENT_LLM_KEY'))
+        
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=text,
+            speed=speed
+        )
+        
+        # Get audio data and encode as base64
+        audio_data = response.content
+        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        
+        # Send TTS result
+        await manager.send_message({
+            "type": "tts_result",
+            "session_id": session_id,
+            "audio_data": audio_base64,
+            "text": text,
+            "voice": voice
+        }, user_id, session_id)
+        
+    except Exception as e:
+        logging.error(f"TTS error: {str(e)}")
+        await manager.send_message({
+            "type": "tts_error",
+            "message": f"Failed to generate speech: {str(e)}",
+            "session_id": session_id
+        }, user_id, session_id)
+
+async def get_or_create_session(user_id: str, session_id: str):
+    """Get existing session or create new one"""
+    session = await db.conversation_sessions.find_one({"id": session_id})
+    
+    if not session:
+        # Create new session
+        new_session = ConversationSession(
+            id=session_id,
+            user_id=user_id,
+            title="New Conversation"
+        )
+        await db.conversation_sessions.insert_one(new_session.dict())
+        return new_session
+    
+    return ConversationSession(**session)
+
+def build_personality_prompt(personality: str, user_config: Dict, kb_items: List, recent_chats: List) -> str:
+    """Build context-aware system message based on personality and user context"""
+    
+    # Get personality definition
+    personality_def = DEFAULT_PERSONALITIES.get(personality, DEFAULT_PERSONALITIES["Professional Assistant"])
+    
+    # Start with base personality prompt
+    system_message = personality_def["system_prompt"]
+    
+    # Add company context if available
+    if user_config:
+        system_message += f"""
+
+Company Context:
+- Company: {user_config.get('company_name', 'Unknown')}
+- Industry: {user_config.get('industry', 'General')}
+- Current AI Personality: {personality}
+
+Key Personality Traits: {', '.join(personality_def['traits'])}
+"""
+
+    # Add knowledge base context
+    if kb_items:
+        system_message += f"""
+
+Company Knowledge Base:
+{chr(10).join([f"- {item['title']}: {item['content'][:200]}..." for item in kb_items[:5]])}
+"""
+
+    # Add conversation context
+    if recent_chats:
+        system_message += f"""
+
+Recent Conversation Context:
+{chr(10).join([f"User: {chat['message']}" for chat in reversed(recent_chats[-3:])])}
+"""
+
+    system_message += """
+
+Instructions:
+- Maintain your personality throughout the conversation
+- Provide practical, actionable advice specific to the user's industry and company context
+- Reference the knowledge base when relevant to provide personalized insights  
+- Be conversational and engaging while staying professional
+- Focus on business value and ROI in your recommendations
+- Ask follow-up questions to better understand the user's specific needs
+"""
+
+    return system_message
+
+# Conversation session management routes
+@api_router.post("/sessions/new", response_model=ConversationSession)
+async def create_new_session(user_id: str):
+    """Create a new conversation session"""
+    try:
+        session = ConversationSession(user_id=user_id)
+        await db.conversation_sessions.insert_one(session.dict())
+        return session
+    except Exception as e:
+        logging.error(f"Session creation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create session")
+
+@api_router.get("/sessions/{user_id}", response_model=List[ConversationSession])
+async def get_user_sessions(user_id: str):
+    """Get all conversation sessions for a user"""
+    try:
+        sessions = await db.conversation_sessions.find(
+            {"user_id": user_id}
+        ).sort("updated_at", -1).to_list(50)
+        return [ConversationSession(**session) for session in sessions]
+    except Exception as e:
+        logging.error(f"Session retrieval error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve sessions")
+
+@api_router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a conversation session and its messages"""
+    try:
+        # Delete session messages
+        await db.chat_messages.delete_many({"session_id": session_id})
+        
+        # Delete session
+        result = await db.conversation_sessions.delete_one({"id": session_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        return {"status": "success", "message": "Session deleted"}
+    except Exception as e:
+        logging.error(f"Session deletion error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete session")
+
+# AI Personalities routes
+@api_router.get("/personalities")
+async def get_ai_personalities():
+    """Get available AI personalities"""
+    try:
+        return {
+            "personalities": DEFAULT_PERSONALITIES,
+            "default": "Professional Assistant"
+        }
+    except Exception as e:
+        logging.error(f"Personalities retrieval error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve personalities")
+
+# Enhanced chat routes with session support
+@api_router.get("/chat/history/{user_id}", response_model=List[ChatMessage])
+async def get_chat_history(user_id: str, session_id: Optional[str] = None, limit: int = 50):
+    """Get chat history for user, optionally filtered by session"""
+    try:
+        query = {"user_id": user_id}
+        if session_id:
+            query["session_id"] = session_id
+            
+        messages = await db.chat_messages.find(query).sort("timestamp", -1).limit(limit).to_list(limit)
+        return [ChatMessage(**msg) for msg in messages]
+    except Exception as e:
+        logging.error(f"Chat history error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve chat history")
+
+# Voice-related REST endpoints for fallback
+@api_router.post("/voice/transcribe")
+async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
+    """Fallback endpoint for audio transcription when WebSocket is not available"""
+    try:
+        if not file.content_type.startswith('audio/'):
+            raise HTTPException(status_code=400, detail="Invalid audio file")
+        
+        # Save uploaded file temporarily
+        temp_file_path = f"/tmp/upload_{uuid.uuid4()}.{file.filename.split('.')[-1]}"
+        
+        async with aiofiles.open(temp_file_path, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+        
+        # Use OpenAI Whisper for transcription
+        import openai
+        client = openai.OpenAI(api_key=os.environ.get('EMERGENT_LLM_KEY'))
+        
+        with open(temp_file_path, 'rb') as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
+            )
+        
+        # Clean up temp file
+        os.remove(temp_file_path)
+        
+        return {
+            "transcript": transcript,
+            "user_id": user_id,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logging.error(f"Audio transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+
+@api_router.post("/voice/synthesize")
+async def synthesize_speech(request: TTSRequest):
+    """Fallback endpoint for text-to-speech when WebSocket is not available"""
+    try:
+        import openai
+        client = openai.OpenAI(api_key=os.environ.get('EMERGENT_LLM_KEY'))
+        
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice=request.voice,
+            input=request.text,
+            speed=request.speed
+        )
+        
+        # Return audio as streaming response
+        audio_data = response.content
+        
+        return StreamingResponse(
+            io.BytesIO(audio_data),
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "attachment; filename=speech.mp3"}
+        )
+        
+    except Exception as e:
+        logging.error(f"TTS error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {str(e)}")
+
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
 async def register_user(user_data: UserCreate):
