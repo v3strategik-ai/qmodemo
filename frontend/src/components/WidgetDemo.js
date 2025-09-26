@@ -669,94 +669,355 @@ const WidgetDemo = () => {
 
                 {/* Chat Tab */}
             <TabsContent value="chat" className="mt-6">
-              <Card className="holographic h-[600px] flex flex-col ai-chat-container">
-                <div className="p-4 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                      <Brain className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white">modQ AI Assistant</h3>
-                      <p className="text-xs text-gray-400">Your intelligent business companion</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 && (
-                    <div className="space-y-6">
-                      <div className="text-center text-gray-400 py-4">
-                        <Bot className="w-12 h-12 mx-auto mb-4 text-gray-500" />
-                        <p className="text-lg font-medium">Welcome to your AI Business Assistant</p>
-                        <p className="text-sm mt-2">Get started with a conversation below, or try one of these popular topics</p>
-                      </div>
-                      
-                      <ConversationStarters 
-                        userConfig={config}
-                        onStarterClick={(message) => {
-                          setCurrentMessage(message);
-                          // Auto-submit the message
-                          setTimeout(() => {
-                            const event = { preventDefault: () => {} };
-                            sendMessage(event);
-                          }, 100);
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                  {messages.map((message) => (
-                    <div key={message.id} className="space-y-3 chat-message">
-                      <div className="flex justify-end">
-                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-lg max-w-xs">
-                          {message.message}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Chat Interface */}
+                <div className="lg:col-span-3">
+                  <Card className="holographic h-[600px] flex flex-col ai-chat-container">
+                    <div className="p-4 border-b border-white/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                            <Brain className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-white">
+                              modQ AI Assistant ({selectedPersonality})
+                            </h3>
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                              <span>Your intelligent business companion</span>
+                              {wsConnected ? (
+                                <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                                  <div className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse"></div>
+                                  Streaming
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                                  Standard Mode
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* AI Personality Selector */}
+                        <div className="min-w-[200px]">
+                          <Select value={selectedPersonality} onValueChange={setSelectedPersonality}>
+                            <SelectTrigger className="glass neon-border">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="glass">
+                              {Object.entries(aiPersonalities).map(([key, personality]) => (
+                                <SelectItem key={key} value={key}>
+                                  <div className="flex items-center gap-2">
+                                    <span>{personality.name}</span>
+                                    {personality.industry && (
+                                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                        {personality.industry}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                      {message.response && (
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {messages.length === 0 && !streamingMessage && (
+                        <div className="space-y-6">
+                          <div className="text-center text-gray-400 py-4">
+                            <Bot className="w-12 h-12 mx-auto mb-4 text-gray-500" />
+                            <p className="text-lg font-medium">Welcome to your AI Business Assistant</p>
+                            <p className="text-sm mt-2">Get started with a conversation below, or try one of these popular topics</p>
+                            
+                            {/* Show selected personality description */}
+                            {aiPersonalities[selectedPersonality] && (
+                              <div className="mt-4 p-3 glass rounded-lg neon-border">
+                                <p className="text-xs text-gray-300">
+                                  <strong>{aiPersonalities[selectedPersonality].name}:</strong>{' '}
+                                  {aiPersonalities[selectedPersonality].description}
+                                </p>
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {aiPersonalities[selectedPersonality].traits?.map(trait => (
+                                    <Badge key={trait} className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                                      {trait}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <ConversationStarters 
+                            userConfig={config}
+                            selectedPersonality={selectedPersonality}
+                            onStarterClick={(message) => {
+                              setCurrentMessage(message);
+                              // Auto-submit the message
+                              setTimeout(() => {
+                                const event = { preventDefault: () => {} };
+                                sendMessage(event);
+                              }, 100);
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      {messages.map((message) => (
+                        <div key={message.id} className="space-y-3 chat-message">
+                          <div className="flex justify-end">
+                            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-lg max-w-xs">
+                              {message.message}
+                            </div>
+                          </div>
+                          {(message.response || (message.is_streaming && streamingMessage)) && (
+                            <div className="flex justify-start">
+                              <div className="glass p-3 rounded-lg max-w-xs space-y-3">
+                                <div className="text-gray-200">
+                                  {message.is_streaming && message.response === '' ? (
+                                    <span>
+                                      {streamingMessage}
+                                      <span className="animate-pulse">|</span>
+                                    </span>
+                                  ) : (
+                                    message.response
+                                  )}
+                                </div>
+                                
+                                {/* Show personality and response time for completed messages */}
+                                {!message.is_streaming && message.response && (
+                                  <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>{message.ai_personality}</span>
+                                    {message.response_time_ms && (
+                                      <span>{message.response_time_ms}ms</span>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {/* Rating component for completed messages */}
+                                {!message.is_streaming && message.response && (
+                                  <AIResponseRating 
+                                    messageId={message.id} 
+                                    onRate={(messageId, rating, feedback) => {
+                                      console.log('Message rated:', messageId, rating, feedback);
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {isTyping && !streamingMessage && (
                         <div className="flex justify-start">
-                          <div className="glass p-3 rounded-lg max-w-xs space-y-3">
-                            <p className="text-gray-200">{message.response}</p>
-                            <AIResponseRating 
-                              messageId={message.id} 
-                              onRate={(messageId, rating, feedback) => {
-                                console.log('Message rated:', messageId, rating, feedback);
-                              }}
-                            />
+                          <div className="glass p-3 rounded-lg">
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                            </div>
                           </div>
                         </div>
                       )}
+                      <div ref={messagesEndRef} />
                     </div>
-                  ))}
-                  
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="glass p-3 rounded-lg">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                        </div>
+                    
+                    <form onSubmit={sendMessage} className="p-4 border-t border-white/10">
+                      <div className="flex gap-2">
+                        <Input
+                          value={currentMessage}
+                          onChange={(e) => setCurrentMessage(e.target.value)}
+                          placeholder={`Ask ${selectedPersonality} anything...`}
+                          className="flex-1 glass neon-border"
+                          disabled={isTyping}
+                        />
+                        <Button type="submit" className="tech-button" disabled={isTyping || !currentMessage.trim()}>
+                          <Send className="w-4 h-4" />
+                        </Button>
                       </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
+                      
+                      {/* Connection status */}
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2">
+                          {wsConnecting && <span>Connecting...</span>}
+                          {wsConnected && config.streaming_enabled && (
+                            <span className="text-green-400">Real-time streaming enabled</span>
+                          )}
+                          {!wsConnected && <span>Using standard mode</span>}
+                        </div>
+                        
+                        {config.voice_settings?.enabled && (
+                          <div className="flex items-center gap-1">
+                            <Volume2 className="w-3 h-3" />
+                            <span>Voice enabled</span>
+                          </div>
+                        )}
+                      </div>
+                    </form>
+                  </Card>
                 </div>
                 
-                <form onSubmit={sendMessage} className="p-4 border-t border-white/10">
-                  <div className="flex gap-2">
-                    <Input
-                      value={currentMessage}
-                      onChange={(e) => setCurrentMessage(e.target.value)}
-                      placeholder="Ask your AI assistant anything..."
-                      className="flex-1 glass neon-border"
-                      disabled={isTyping}
-                    />
-                    <Button type="submit" className="tech-button" disabled={isTyping || !currentMessage.trim()}>
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </form>
-              </Card>
+                {/* Chat Controls Sidebar */}
+                <div className="space-y-4">
+                  {/* Streaming Toggle */}
+                  <Card className="holographic p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-300">Real-time Streaming</p>
+                        <p className="text-xs text-gray-400">Get instant AI responses</p>
+                      </div>
+                      <Switch
+                        checked={config.streaming_enabled}
+                        onCheckedChange={(value) => {
+                          const updatedConfig = { ...config, streaming_enabled: value };
+                          setConfig(updatedConfig);
+                          saveConfig(updatedConfig);
+                        }}
+                      />
+                    </div>
+                  </Card>
+                  
+                  {/* Voice Quick Settings */}
+                  {config.voice_settings?.enabled && (
+                    <Card className="holographic p-4">
+                      <h4 className="font-medium text-gray-300 mb-3">Quick Voice Controls</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">Auto-play responses</span>
+                          <Switch
+                            checked={config.voice_settings.auto_play_responses}
+                            onCheckedChange={(value) => {
+                              handleVoiceSettingsChange({
+                                ...config.voice_settings,
+                                auto_play_responses: value
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Voice Tab */}
+            <TabsContent value="voice" className="mt-6">
+              <VoiceInterface
+                ref={voiceInterfaceRef}
+                currentUser={currentUser}
+                voiceSettings={config.voice_settings}
+                onVoiceSettingsChange={handleVoiceSettingsChange}
+                onTranscriptionResult={handleVoiceTranscription}
+                onTTSResult={handleTTSRequest}
+              />
+            </TabsContent>
+
+            {/* Sessions Tab */}
+            <TabsContent value="sessions" className="mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <Card className="holographic p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-semibold text-white">Conversation Sessions</h3>
+                      <Button onClick={createNewSession} className="tech-button">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        New Conversation
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {conversationSessions.length === 0 ? (
+                        <div className="text-center text-gray-400 py-8">
+                          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No conversations yet</p>
+                          <p className="text-sm mt-1">Start a new conversation to begin</p>
+                        </div>
+                      ) : (
+                        conversationSessions.map((session) => (
+                          <div 
+                            key={session.id}
+                            className={`glass p-4 rounded-lg neon-border cursor-pointer transition-all hover:bg-white/10 ${
+                              currentSessionId === session.id ? 'bg-blue-500/20 border-blue-500/50' : ''
+                            }`}
+                            onClick={() => switchToSession(session.id)}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-white mb-1">{session.title}</h4>
+                                <div className="flex items-center gap-3 text-xs text-gray-400">
+                                  <span>{session.message_count} messages</span>
+                                  <span>Updated {new Date(session.updated_at).toLocaleDateString()}</span>
+                                  {session.is_active && (
+                                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                                      Active
+                                    </Badge>
+                                  )}
+                                </div>
+                                {session.context_summary && (
+                                  <p className="text-sm text-gray-300 mt-2 line-clamp-2">{session.context_summary}</p>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSession(session.id);
+                                }}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </Card>
+                </div>
+                
+                <div>
+                  <Card className="holographic p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Session Info</h3>
+                    {currentSessionId ? (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-400">Current Session</p>
+                          <p className="text-white font-medium">{currentSessionId}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-400">WebSocket Status</p>
+                          <div className="flex items-center gap-2">
+                            {wsConnected ? (
+                              <>
+                                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                <span className="text-green-400 text-sm">Connected</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                                <span className="text-red-400 text-sm">Disconnected</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-400">Messages in Session</p>
+                          <p className="text-white">{messages.length}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">No session selected</p>
+                    )}
+                  </Card>
+                </div>
+              </div>
             </TabsContent>
 
             {/* Smart Insights Tab */}
