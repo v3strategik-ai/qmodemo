@@ -1092,22 +1092,40 @@ const WidgetDemo = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">AI Personality</label>
-                      <Select value={config.ai_personality} onValueChange={(value) => setConfig({...config, ai_personality: value})}>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Default AI Personality</label>
+                      <Select 
+                        value={config.ai_personality} 
+                        onValueChange={(value) => {
+                          setConfig({...config, ai_personality: value});
+                          setSelectedPersonality(value);
+                        }}
+                      >
                         <SelectTrigger className="glass neon-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          <SelectItem value="Professional Assistant">Professional Assistant</SelectItem>
-                          <SelectItem value="Strategic Advisor">Strategic Advisor</SelectItem>
-                          <SelectItem value="Creative Partner">Creative Partner</SelectItem>
-                          <SelectItem value="Data Analyst">Data Analyst</SelectItem>
-                          <SelectItem value="Regional Manager">Regional Manager</SelectItem>
+                          {Object.entries(aiPersonalities).map(([key, personality]) => (
+                            <SelectItem key={key} value={key}>
+                              <div className="flex items-center gap-2">
+                                <span>{personality.name}</span>
+                                {personality.industry && (
+                                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                    {personality.industry}
+                                  </Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                      {aiPersonalities[config.ai_personality] && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {aiPersonalities[config.ai_personality].description}
+                        </p>
+                      )}
                     </div>
                     
-                    <Button onClick={saveConfig} className="w-full tech-button" disabled={loading}>
+                    <Button onClick={() => saveConfig()} className="w-full tech-button" disabled={loading}>
                       <Settings className="w-4 h-4 mr-2" />
                       Save Configuration
                     </Button>
@@ -1115,23 +1133,79 @@ const WidgetDemo = () => {
                 </Card>
                 
                 <Card className="holographic p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-white">Integration Settings</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-white">Advanced Features</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-gray-300">CRM Integration</p>
-                        <p className="text-sm text-gray-400">Connect to existing CRM systems</p>
+                        <p className="font-medium text-gray-300">Real-time Streaming</p>
+                        <p className="text-sm text-gray-400">Enable streaming AI responses</p>
                       </div>
-                      <Switch />
+                      <Switch 
+                        checked={config.streaming_enabled}
+                        onCheckedChange={(value) => setConfig({...config, streaming_enabled: value})}
+                      />
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-gray-300">Email Automation</p>
-                        <p className="text-sm text-gray-400">Automate email workflows</p>
+                        <p className="font-medium text-gray-300">Voice Features</p>
+                        <p className="text-sm text-gray-400">Enable voice input and output</p>
                       </div>
-                      <Switch />
+                      <Switch 
+                        checked={config.voice_settings?.enabled || false}
+                        onCheckedChange={(value) => {
+                          const newVoiceSettings = {
+                            ...config.voice_settings,
+                            enabled: value
+                          };
+                          setConfig({...config, voice_settings: newVoiceSettings});
+                        }}
+                      />
                     </div>
+                    
+                    {/* Voice Settings */}
+                    {config.voice_settings?.enabled && (
+                      <div className="space-y-3 pt-3 border-t border-white/10">
+                        <h4 className="font-medium text-gray-300">Voice Settings</h4>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-400 mb-2">Voice</label>
+                          <Select 
+                            value={config.voice_settings.voice}
+                            onValueChange={(value) => {
+                              const newVoiceSettings = {...config.voice_settings, voice: value};
+                              setConfig({...config, voice_settings: newVoiceSettings});
+                            }}
+                          >
+                            <SelectTrigger className="glass neon-border">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="glass">
+                              <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
+                              <SelectItem value="echo">Echo (Male)</SelectItem>
+                              <SelectItem value="fable">Fable (British Male)</SelectItem>
+                              <SelectItem value="onyx">Onyx (Deep Male)</SelectItem>
+                              <SelectItem value="nova">Nova (Female)</SelectItem>
+                              <SelectItem value="shimmer">Shimmer (Female)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-400">Auto-play Responses</p>
+                            <p className="text-xs text-gray-500">Automatically play AI responses</p>
+                          </div>
+                          <Switch 
+                            checked={config.voice_settings.auto_play_responses}
+                            onCheckedChange={(value) => {
+                              const newVoiceSettings = {...config.voice_settings, auto_play_responses: value};
+                              setConfig({...config, voice_settings: newVoiceSettings});
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="flex items-center justify-between">
                       <div>
