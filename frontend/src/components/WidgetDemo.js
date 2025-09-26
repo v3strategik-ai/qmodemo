@@ -9,7 +9,7 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { ArrowLeft, Bot, Send, Settings, Upload, Zap, Brain, MessageSquare, FileText, Sparkles, BarChart3, Target } from 'lucide-react';
+import { ArrowLeft, Bot, Send, Settings, Upload, Zap, Brain, MessageSquare, FileText, Sparkles, BarChart3, Target, Mic, Volume2, Users } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import OnboardingTour from './OnboardingTour';
@@ -21,6 +21,8 @@ import SmartInsightsPanel from './SmartInsightsPanel';
 import ProgressTracker from './ProgressTracker';
 import ExportCapabilities from './ExportCapabilities';
 import AchievementSystem from './AchievementSystem';
+import VoiceInterface from './VoiceInterface';
+import useWebSocket from '../hooks/useWebSocket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
