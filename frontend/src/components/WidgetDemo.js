@@ -849,12 +849,10 @@ const WidgetDemo = () => {
                           {!wsConnected && <span>Using standard mode</span>}
                         </div>
                         
-                        {config.voice_settings?.enabled && (
-                          <div className="flex items-center gap-1">
-                            <Volume2 className="w-3 h-3" />
-                            <span>Voice enabled</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 text-gray-400">
+                          <Brain className="w-3 h-3" />
+                          <span>AI Enhanced</span>
+                        </div>
                       </div>
                     </form>
                   </Card>
