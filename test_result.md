@@ -265,10 +265,9 @@
 ## test_plan:
   current_focus:
     - "Real-time Streaming AI Responses Implementation"
-    - "Voice Input/Output Backend Integration"
   stuck_tasks: 
-    - "Voice Input/Output Backend Integration"
-  test_all: true
+    - "Real-time Streaming AI Responses Implementation"
+  test_all: false
   test_priority: "high_first"
 
 ## agent_communication:
