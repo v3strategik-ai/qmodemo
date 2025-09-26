@@ -474,6 +474,50 @@ const WidgetDemo = () => {
     }
   };
 
+  const createNewSession = async () => {
+    try {
+      const response = await axios.post(`${API}/sessions/new?user_id=${currentUser.id}`);
+      const newSession = response.data;
+      
+      setConversationSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      setMessages([]); // Clear messages for new session
+      
+      toast.success('New conversation started!');
+    } catch (error) {
+      console.error('Failed to create new session:', error);
+      toast.error('Failed to create new conversation');
+    }
+  };
+
+  const switchToSession = (sessionId) => {
+    setCurrentSessionId(sessionId);
+    loadChatHistory(sessionId);
+  };
+
+  const deleteSession = async (sessionId) => {
+    try {
+      await axios.delete(`${API}/sessions/${sessionId}`);
+      
+      setConversationSessions(prev => prev.filter(s => s.id !== sessionId));
+      
+      if (currentSessionId === sessionId) {
+        // If deleting current session, switch to another or create new
+        const remainingSessions = conversationSessions.filter(s => s.id !== sessionId);
+        if (remainingSessions.length > 0) {
+          switchToSession(remainingSessions[0].id);
+        } else {
+          await createNewSession();
+        }
+      }
+      
+      toast.success('Conversation deleted');
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      toast.error('Failed to delete conversation');
+    }
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center relative">
