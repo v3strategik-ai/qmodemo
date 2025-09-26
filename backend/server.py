@@ -588,65 +588,24 @@ async def get_chat_history(user_id: str, session_id: Optional[str] = None, limit
 # Voice-related REST endpoints for fallback
 @api_router.post("/voice/transcribe")
 async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
-    """Fallback endpoint for audio transcription when WebSocket is not available"""
+    """Fallback endpoint for audio transcription - currently disabled due to API key incompatibility"""
     try:
-        if not file.content_type.startswith('audio/'):
-            raise HTTPException(status_code=400, detail="Invalid audio file")
-        
-        # Save uploaded file temporarily
-        temp_file_path = f"/tmp/upload_{uuid.uuid4()}.{file.filename.split('.')[-1]}"
-        
-        async with aiofiles.open(temp_file_path, 'wb') as f:
-            content = await file.read()
-            await f.write(content)
-        
-        # Use OpenAI Whisper for transcription
-        import openai
-        client = openai.OpenAI(api_key=os.environ.get('EMERGENT_LLM_KEY'))
-        
-        with open(temp_file_path, 'rb') as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="text"
-            )
-        
-        # Clean up temp file
-        os.remove(temp_file_path)
-        
-        return {
-            "transcript": transcript,
-            "user_id": user_id,
-            "status": "success"
-        }
-        
+        raise HTTPException(
+            status_code=501, 
+            detail="Voice transcription temporarily disabled. OpenAI API key required for Whisper integration. Emergent LLM key is not compatible with OpenAI voice APIs."
+        )
     except Exception as e:
         logging.error(f"Audio transcription error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 @api_router.post("/voice/synthesize")
 async def synthesize_speech(request: TTSRequest):
-    """Fallback endpoint for text-to-speech when WebSocket is not available"""
+    """Fallback endpoint for text-to-speech - currently disabled due to API key incompatibility"""
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.environ.get('EMERGENT_LLM_KEY'))
-        
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice=request.voice,
-            input=request.text,
-            speed=request.speed
+        raise HTTPException(
+            status_code=501, 
+            detail="Text-to-speech temporarily disabled. OpenAI API key required for TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs."
         )
-        
-        # Return audio as streaming response
-        audio_data = response.content
-        
-        return StreamingResponse(
-            io.BytesIO(audio_data),
-            media_type="audio/mpeg",
-            headers={"Content-Disposition": "attachment; filename=speech.mp3"}
-        )
-        
     except Exception as e:
         logging.error(f"TTS error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {str(e)}")
