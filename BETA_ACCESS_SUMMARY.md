@@ -3,10 +3,10 @@
 ## 🎯 **LIVE PLATFORM ACCESS**
 
 ### **🌐 Application URLs**
-- **Main Landing Page**: https://ai-business-suite.preview.emergentagent.com
-- **Widget Demo**: https://ai-business-suite.preview.emergentagent.com/widget-demo  
-- **Enterprise Dashboard**: https://ai-business-suite.preview.emergentagent.com/dashboard
-- **Admin Portal**: https://ai-business-suite.preview.emergentagent.com/admin
+- **Main Landing Page**: https://quantum-crm.preview.emergentagent.com
+- **Widget Demo**: https://quantum-crm.preview.emergentagent.com/widget-demo  
+- **Enterprise Dashboard**: https://quantum-crm.preview.emergentagent.com/dashboard
+- **Admin Portal**: https://quantum-crm.preview.emergentagent.com/admin
 
 ### **🔑 Admin Portal Credentials**
 ```

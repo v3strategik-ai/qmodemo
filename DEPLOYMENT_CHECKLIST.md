@@ -14,8 +14,8 @@
 - [x] Domain configured: `ai-business-suite.preview.emergentagent.com`
 
 ### **🎯 IMMEDIATE ACCESS:**
-- **Live App**: https://ai-business-suite.preview.emergentagent.com
-- **Admin Portal**: https://ai-business-suite.preview.emergentagent.com/admin
+- **Live App**: https://quantum-crm.preview.emergentagent.com
+- **Admin Portal**: https://quantum-crm.preview.emergentagent.com/admin
 - **Admin Credentials**: `admin` / `modQ2024!`
 
 ---
