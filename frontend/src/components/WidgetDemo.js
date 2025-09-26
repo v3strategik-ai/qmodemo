@@ -322,33 +322,120 @@ const WidgetDemo = () => {
     e.preventDefault();
     if (!currentMessage.trim() || isTyping) return;
 
+    const messageText = currentMessage.trim();
+    setCurrentMessage('');
+
+    // Use WebSocket for streaming if connected, otherwise fallback to REST API
+    if (wsConnected && config.streaming_enabled) {
+      // Send via WebSocket for streaming response
+      sendChatMessage(messageText, selectedPersonality);
+    } else {
+      // Fallback to traditional REST API
+      await sendMessageREST(messageText);
+    }
+  };
+
+  const sendMessageREST = async (messageText) => {
     const userMessage = {
       id: Date.now().toString(),
       user_id: currentUser.id,
-      message: currentMessage,
+      session_id: currentSessionId,
+      message: messageText,
       response: '',
       timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setCurrentMessage('');
     setIsTyping(true);
 
     try {
       const response = await axios.post(`${API}/chat`, {
         user_id: currentUser.id,
-        message: currentMessage
+        message: messageText,
+        session_id: currentSessionId
       });
 
       setMessages(prev => prev.map(msg => 
         msg.id === userMessage.id ? response.data : msg
       ));
+
+      // Auto-play TTS if enabled
+      if (config.voice_settings?.enabled && config.voice_settings?.auto_play_responses && requestTTS) {
+        requestTTS(response.data.response, config.voice_settings.voice, config.voice_settings.speech_speed);
+      }
     } catch (error) {
       toast.error('Failed to get AI response');
       console.error('Chat error:', error);
     } finally {
       setIsTyping(false);
     }
+  };
+
+  // Voice interface handlers
+  const handleVoiceTranscription = async (transcriptionData) => {
+    try {
+      if (wsConnected) {
+        // Send via WebSocket
+        sendVoiceTranscription(transcriptionData.audio_data, transcriptionData.duration, true);
+      } else {
+        // Fallback to REST API
+        const formData = new FormData();
+        const audioBlob = new Blob([
+          Uint8Array.from(atob(transcriptionData.audio_data), c => c.charCodeAt(0))
+        ], { type: 'audio/webm' });
+        
+        formData.append('file', audioBlob, 'recording.webm');
+        formData.append('user_id', currentUser.id);
+
+        const response = await axios.post(`${API}/voice/transcribe`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        setCurrentMessage(response.data.transcript);
+        toast.success(`Transcribed: "${response.data.transcript}"`);
+      }
+    } catch (error) {
+      console.error('Voice transcription error:', error);
+      toast.error('Failed to transcribe voice input');
+    }
+  };
+
+  const handleTTSRequest = async (ttsData) => {
+    try {
+      if (wsConnected) {
+        // Send via WebSocket
+        requestTTS(ttsData.text, ttsData.voice, ttsData.speed);
+      } else {
+        // Fallback to REST API
+        const response = await axios.post(`${API}/voice/synthesize`, {
+          user_id: currentUser.id,
+          text: ttsData.text,
+          voice: ttsData.voice,
+          speed: ttsData.speed
+        }, {
+          responseType: 'blob'
+        });
+
+        const audioUrl = URL.createObjectURL(response.data);
+        const audio = new Audio(audioUrl);
+        audio.play();
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+      }
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast.error('Failed to generate speech');
+    }
+  };
+
+  const handleVoiceSettingsChange = (newSettings) => {
+    const updatedConfig = {
+      ...config,
+      voice_settings: newSettings
+    };
+    setConfig(updatedConfig);
+    
+    // Save to backend
+    saveConfig(updatedConfig);
   };
 
   const saveConfig = async () => {
