@@ -589,26 +589,18 @@ async def get_chat_history(user_id: str, session_id: Optional[str] = None, limit
 @api_router.post("/voice/transcribe")
 async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
     """Fallback endpoint for audio transcription - currently disabled due to API key incompatibility"""
-    try:
-        raise HTTPException(
-            status_code=501, 
-            detail="Voice transcription temporarily disabled. OpenAI API key required for Whisper integration. Emergent LLM key is not compatible with OpenAI voice APIs."
-        )
-    except Exception as e:
-        logging.error(f"Audio transcription error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+    raise HTTPException(
+        status_code=501, 
+        detail="Voice transcription temporarily disabled. OpenAI API key required for Whisper integration. Emergent LLM key is not compatible with OpenAI voice APIs."
+    )
 
 @api_router.post("/voice/synthesize")
 async def synthesize_speech(request: TTSRequest):
     """Fallback endpoint for text-to-speech - currently disabled due to API key incompatibility"""
-    try:
-        raise HTTPException(
-            status_code=501, 
-            detail="Text-to-speech temporarily disabled. OpenAI API key required for TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs."
-        )
-    except Exception as e:
-        logging.error(f"TTS error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {str(e)}")
+    raise HTTPException(
+        status_code=501, 
+        detail="Text-to-speech temporarily disabled. OpenAI API key required for TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs."
+    )
 
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
