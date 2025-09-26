@@ -761,12 +761,20 @@ async def get_knowledge_base(user_id: str):
     items = await db.knowledge_base.find({"user_id": user_id}).to_list(100)
     return [KnowledgeBaseItem(**item) for item in items]
 
-# Chat routes
+# Enhanced chat route with backward compatibility
 @api_router.post("/chat", response_model=ChatMessage)
 async def chat_with_ai(chat_request: ChatRequest):
     try:
         # Import here to avoid startup issues
         from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        # Get or create session if not provided
+        session_id = chat_request.session_id
+        if not session_id:
+            # Create new session for backward compatibility
+            session = ConversationSession(user_id=chat_request.user_id)
+            await db.conversation_sessions.insert_one(session.dict())
+            session_id = session.id
         
         # Get user config for context
         user_config = await db.widget_configs.find_one({"user_id": chat_request.user_id})
@@ -774,47 +782,23 @@ async def chat_with_ai(chat_request: ChatRequest):
         # Get user's knowledge base
         kb_items = await db.knowledge_base.find({"user_id": chat_request.user_id}).to_list(100)
         
-        # Build system message based on config and knowledge base
-        system_message = f"""You are modQ - a Modular Quantum Business Intelligence assistant. You are an ultra-intelligent AI agent that acts as a personal assistant, regional manager, and CEO all in one.
-
-Your capabilities include:
-- Providing intelligent business insights and analytics
-- Automating workflows and processes
-- Offering strategic recommendations
-- Analyzing data and trends
-- Managing tasks and projects
-- Creating business reports and frameworks
-- Optimizing operations and efficiency
-
-"""
-        
-        if user_config:
-            system_message += f"""
-Company Context: {user_config.get('company_name', 'Unknown')}
-Industry: {user_config.get('industry', 'General')}
-AI Personality: {user_config.get('ai_personality', 'Professional Assistant')}
-
-Available Automations: {', '.join(user_config.get('workflow_automations', []))}
-"""
-
-        if kb_items:
-            system_message += f"""
-Company Knowledge Base:
-{chr(10).join([f"- {item['title']}: {item['content'][:200]}..." for item in kb_items])}
-"""
-
-        system_message += """
-Provide practical, actionable advice. Be specific and include metrics, frameworks, or step-by-step guidance when possible. Focus on business value and ROI."""
-
         # Get recent chat history for context
         recent_chats = await db.chat_messages.find(
-            {"user_id": chat_request.user_id}
+            {"user_id": chat_request.user_id, "session_id": session_id}
         ).sort("timestamp", -1).limit(5).to_list(5)
         
+        # Determine personality from config or default
+        personality = "Professional Assistant"
+        if user_config and user_config.get('ai_personality'):
+            personality = user_config['ai_personality']
+        
+        # Build system message with personality and context
+        system_message = build_personality_prompt(personality, user_config, kb_items, recent_chats)
+
         # Initialize LLM chat
         chat = LlmChat(
             api_key=os.environ.get('EMERGENT_LLM_KEY'),
-            session_id=f"modq-{chat_request.user_id}",
+            session_id=f"modq-{chat_request.user_id}-{session_id}",
             system_message=system_message
         ).with_model("openai", "gpt-4o")
         
@@ -822,16 +806,34 @@ Provide practical, actionable advice. Be specific and include metrics, framework
         user_message = UserMessage(text=chat_request.message)
         
         # Get AI response
+        start_time = datetime.now()
         ai_response = await chat.send_message(user_message)
+        response_time = (datetime.now() - start_time).total_seconds() * 1000
         
         # Save to database
         chat_obj = ChatMessage(
             user_id=chat_request.user_id,
+            session_id=session_id,
             message=chat_request.message,
-            response=ai_response
+            response=ai_response,
+            ai_personality=personality,
+            response_time_ms=int(response_time),
+            is_streaming=False
         )
         
         await db.chat_messages.insert_one(chat_obj.dict())
+        
+        # Update session
+        await db.conversation_sessions.update_one(
+            {"id": session_id},
+            {
+                "$set": {
+                    "updated_at": datetime.now(timezone.utc),
+                    "message_count": await db.chat_messages.count_documents({"session_id": session_id})
+                }
+            }
+        )
+        
         return chat_obj
         
     except Exception as e:
