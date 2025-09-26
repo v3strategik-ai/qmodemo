@@ -1318,7 +1318,9 @@ const WidgetDemo = () => {
                 knowledgeItems={knowledgeItems}
                 progressStats={{
                   currentStreak: 3, // This would come from ProgressTracker in production
-                  totalConversations: messages.length
+                  totalConversations: messages.length,
+                  voiceInteractions: 0, // Track voice usage
+                  streamingMessages: messages.filter(m => m.is_streaming).length
                 }}
               />
             </TabsContent>
