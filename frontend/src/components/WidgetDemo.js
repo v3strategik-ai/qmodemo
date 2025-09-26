@@ -752,7 +752,6 @@ const WidgetDemo = () => {
                           
                           <ConversationStarters 
                             userConfig={config}
-                            selectedPersonality={selectedPersonality}
                             onStarterClick={(message) => {
                               setCurrentMessage(message);
                               // Auto-submit the message
