@@ -2340,42 +2340,37 @@ class ModQAPITester:
         return False
 
 def main():
-    print("🚀 Starting modQ Team Collaboration Backend Testing")
+    print("🚀 Starting modQ White-Label Customization Backend Testing")
     print("=" * 70)
-    print("Focus: Team Management, Invitations, Shared Conversations & Analytics")
+    print("Focus: Brand Customization, Theme Management, Logo Upload & White-Label Features")
     print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence - focused on Team Collaboration functionality as requested
+    # Test sequence - focused on White-Label Customization functionality as requested
     tests = [
         # Basic setup tests
         ("Root Endpoint", tester.test_root_endpoint),
         
-        # Team Collaboration Tests (main focus)
-        ("Create Team", tester.test_create_team),
-        ("Get User Teams", tester.test_get_user_teams),
-        ("Get Team Members", tester.test_get_team_members),
-        ("Team Invitation", tester.test_team_invitation),
-        ("Duplicate Invitation Prevention", tester.test_duplicate_invitation),
-        ("Accept Team Invitation", tester.test_accept_team_invitation),
-        ("Team Members After Invitation", tester.test_team_members_after_invitation),
-        ("Create Shared Conversation", tester.test_create_shared_conversation),
-        ("Get Shared Conversations", tester.test_get_shared_conversations),
-        ("Team Activities", tester.test_team_activities),
-        ("Team Analytics", tester.test_team_analytics),
-        ("Team Access Control", tester.test_team_access_control),
-        ("Invitation Permissions", tester.test_invitation_permissions),
+        # White-Label Customization Tests (main focus)
+        ("Get User Branding (System Defaults)", tester.test_get_user_branding_defaults),
+        ("Create Brand Customization", tester.test_create_brand_customization),
+        ("Update Brand Customization", tester.test_update_brand_customization),
+        ("Get Theme Presets", tester.test_theme_presets),
+        ("Logo Upload", tester.test_logo_upload),
+        ("Logo Upload Validation", tester.test_logo_upload_validation),
+        ("Create Custom Domain", tester.test_create_custom_domain),
+        ("Get User Domains", tester.test_get_user_domains),
+        ("Domain Validation", tester.test_domain_validation),
+        ("Create White-Label Configuration", tester.test_create_white_label_config),
+        ("Get White-Label Configuration", tester.test_get_white_label_config),
+        ("Color Format Validation", tester.test_color_format_validation),
+        ("Hierarchical Branding Logic", tester.test_hierarchical_branding),
+        ("White-Label Integration", tester.test_white_label_integration),
         
         # Core functionality tests for context
         ("AI Personalities", tester.test_ai_personalities),
         ("Session Management", tester.test_session_management),
-        
-        # Integration Marketplace Tests (secondary)
-        ("Available Integrations Endpoint", tester.test_available_integrations),
-        ("User Integrations Empty", tester.test_user_integrations_empty),
-        ("Connect Integration", tester.test_connect_integration),
-        ("Integration Data Validation", tester.test_integration_data_validation),
         
         # WebSocket tests (known issues)
         ("WebSocket Connection", tester.test_websocket_connection),
