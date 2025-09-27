@@ -25,6 +25,7 @@ import VoiceInterface from './VoiceInterface';
 import IntegrationMarketplace from './IntegrationMarketplace';
 import TeamCollaboration from './TeamCollaboration';
 import BrandCustomization from './BrandCustomization';
+import WorkflowBuilder from './WorkflowBuilder';
 import useWebSocket from '../hooks/useWebSocket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
