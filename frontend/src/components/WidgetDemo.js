@@ -634,7 +634,7 @@ const WidgetDemo = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-9 glass neon-border">
+            <TabsList className="grid w-full grid-cols-10 glass neon-border">
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 AI Chat
@@ -642,6 +642,10 @@ const WidgetDemo = () => {
               <TabsTrigger value="sessions" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Sessions
+              </TabsTrigger>
+              <TabsTrigger value="teams" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Teams
               </TabsTrigger>
               <TabsTrigger value="integrations" className="flex items-center gap-2">
                 <Zap className="w-4 h-4" />
