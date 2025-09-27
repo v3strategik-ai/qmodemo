@@ -1034,6 +1034,11 @@ const WidgetDemo = () => {
               <IntegrationMarketplace currentUser={currentUser} />
             </TabsContent>
 
+            {/* Brand Customization Tab */}
+            <TabsContent value="branding" className="mt-6">
+              <BrandCustomization currentUser={currentUser} />
+            </TabsContent>
+
             {/* Smart Insights Tab */}
             <TabsContent value="insights" className="mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
