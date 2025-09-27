@@ -310,6 +310,126 @@ class SharedConversationCreate(BaseModel):
     creator_id: str
     is_public: bool = True
 
+# White-Label Customization Models
+class BrandCustomization(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None  # None for system-wide customization
+    team_id: Optional[str] = None  # Team-specific branding
+    organization_name: str = "modQ"
+    logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    primary_color: str = "#3b82f6"  # Default blue
+    secondary_color: str = "#8b5cf6"  # Default purple
+    accent_color: str = "#10b981"  # Default green
+    background_color: str = "#000000"  # Default black
+    text_color: str = "#ffffff"  # Default white
+    border_color: str = "#374151"  # Default gray
+    theme_mode: str = "dark"  # dark, light, auto
+    custom_css: Optional[str] = None
+    welcome_message: str = "Welcome to your AI-powered business intelligence platform"
+    tagline: str = "Modular Quantum Business Intelligence"
+    footer_text: str = "Powered by modQ"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_active: bool = True
+
+class CustomDomain(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    domain_name: str
+    subdomain: Optional[str] = None  # e.g., "app" in app.company.com
+    ssl_enabled: bool = False
+    ssl_certificate: Optional[str] = None
+    dns_configured: bool = False
+    verification_token: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    status: str = "pending"  # pending, verified, active, error
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    verified_at: Optional[datetime] = None
+
+class ThemePreset(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    primary_color: str
+    secondary_color: str
+    accent_color: str
+    background_color: str
+    text_color: str
+    border_color: str
+    theme_mode: str
+    preview_image: Optional[str] = None
+    is_system_preset: bool = True
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WhiteLabelConfig(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    organization_name: str
+    brand_customization_id: str
+    custom_domain_id: Optional[str] = None
+    hide_modq_branding: bool = False
+    custom_login_page: bool = False
+    custom_dashboard_title: str = "Business Intelligence Dashboard"
+    custom_support_email: str = "support@company.com"
+    custom_documentation_url: Optional[str] = None
+    analytics_tracking_id: Optional[str] = None
+    is_enterprise_plan: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Request Models for White-Label
+class BrandCustomizationCreate(BaseModel):
+    user_id: Optional[str] = None
+    team_id: Optional[str] = None
+    organization_name: str
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+    welcome_message: Optional[str] = None
+    tagline: Optional[str] = None
+
+class BrandCustomizationUpdate(BaseModel):
+    organization_name: Optional[str] = None
+    logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+    background_color: Optional[str] = None
+    text_color: Optional[str] = None
+    border_color: Optional[str] = None
+    theme_mode: Optional[str] = None
+    custom_css: Optional[str] = None
+    welcome_message: Optional[str] = None
+    tagline: Optional[str] = None
+    footer_text: Optional[str] = None
+
+class CustomDomainCreate(BaseModel):
+    user_id: str
+    domain_name: str
+    subdomain: Optional[str] = None
+
+class CustomDomainUpdate(BaseModel):
+    ssl_enabled: Optional[bool] = None
+    dns_configured: Optional[bool] = None
+    status: Optional[str] = None
+    error_message: Optional[str] = None
+
+class WhiteLabelConfigCreate(BaseModel):
+    user_id: str
+    organization_name: str
+    hide_modq_branding: bool = False
+    custom_login_page: bool = False
+    custom_dashboard_title: Optional[str] = None
+    custom_support_email: Optional[str] = None
+
+class LogoUploadResponse(BaseModel):
+    success: bool
+    logo_url: str
+    message: str
+
 # WebSocket Connection Manager
 class ConnectionManager:
     def __init__(self):
