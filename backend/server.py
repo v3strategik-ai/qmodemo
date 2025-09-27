@@ -1958,7 +1958,7 @@ def get_hardcoded_templates():
                     "name": "Check Engagement",
                     "description": "Check if user opened the email",
                     "position": {"x": 300, "y": 350},
-                    "configuration": {"field": "email_opened", "operator": "==", "value": true, "wait_days": 3}
+                    "configuration": {"field": "email_opened", "operator": "==", "value": True, "wait_days": 3}
                 },
                 {
                     "id": "action-3",
