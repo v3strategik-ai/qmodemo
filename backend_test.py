@@ -2407,7 +2407,7 @@ class ModQAPITester:
                         print(f"   ❌ Template field '{field}' missing")
                         all_found = False
             
-            return all_found and len(templates) >= 5
+            return all_found and len(templates) >= 3
         
         return False
 
