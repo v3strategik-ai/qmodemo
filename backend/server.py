@@ -2005,7 +2005,7 @@ def get_hardcoded_templates():
                     "target_node_id": "action-3",
                     "source_port": "true",
                     "target_port": "input",
-                    "condition": "email_opened == true"
+                    "condition": "email_opened == True"
                 },
                 {
                     "id": "conn-8",
