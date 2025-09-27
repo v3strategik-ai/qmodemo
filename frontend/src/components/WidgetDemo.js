@@ -1178,11 +1178,14 @@ const WidgetDemo = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-300">Voice Features</p>
-                        <p className="text-sm text-gray-400">Coming in future updates</p>
+                        <p className="text-sm text-gray-400">AI voice input and output with OpenAI</p>
                       </div>
                       <Switch 
-                        checked={false}
-                        disabled={true}
+                        checked={config.voice_settings?.enabled || false}
+                        onCheckedChange={(value) => setConfig({
+                          ...config, 
+                          voice_settings: { ...config.voice_settings, enabled: value }
+                        })}
                       />
                     </div>
                     
