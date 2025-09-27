@@ -685,10 +685,6 @@ const WidgetDemo = () => {
                 <FileText className="w-4 h-4" />
                 Knowledge
               </TabsTrigger>
-              <TabsTrigger value="achievements" className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Achievements
-              </TabsTrigger>
             </TabsList>
 
                 {/* Chat Tab */}
