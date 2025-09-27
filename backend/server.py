@@ -2251,8 +2251,8 @@ async def delete_workflow(workflow_id: str, user_id: str):
 async def get_workflow_templates(category: Optional[str] = None, industry: Optional[str] = None):
     """Get available workflow templates"""
     try:
-        # System templates - in production these would come from database
-        templates = [
+        # Get hardcoded templates
+        templates = get_hardcoded_templates()
             {
                 "id": "lead-qualification-basic",
                 "name": "Lead Qualification Workflow",
