@@ -483,6 +483,320 @@ class ModQAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False
 
+    def test_voice_synthesis_different_voices(self):
+        """Test TTS with different voice options (alloy, echo, fable, onyx, nova, shimmer)"""
+        print("\n🎭 Testing Voice Synthesis with Different Voices...")
+        
+        voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        successful_voices = 0
+        
+        for voice in voices:
+            tts_data = {
+                "user_id": "test-user-voice",
+                "text": f"Testing voice {voice} for modQ text-to-speech functionality.",
+                "voice": voice,
+                "speed": 1.0
+            }
+            
+            self.tests_run += 1
+            print(f"🔍 Testing voice: {voice}")
+            
+            try:
+                response = requests.post(f"{self.base_url}/voice/synthesize", json=tts_data, timeout=30)
+                
+                if response.status_code == 200:
+                    successful_voices += 1
+                    self.tests_passed += 1
+                    print(f"   ✅ Voice '{voice}' working - Audio size: {len(response.content)} bytes")
+                elif response.status_code == 500:
+                    try:
+                        error_data = response.json()
+                        error_detail = error_data.get('detail', '')
+                        if 'API key' in error_detail or 'OpenAI' in error_detail:
+                            print(f"   ❌ Voice '{voice}' failed - OpenAI API key issue")
+                        else:
+                            print(f"   ❌ Voice '{voice}' failed - Server error: {error_detail}")
+                    except:
+                        print(f"   ❌ Voice '{voice}' failed - Server error")
+                else:
+                    print(f"   ❌ Voice '{voice}' failed - Status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"   ❌ Voice '{voice}' failed - Error: {str(e)}")
+        
+        print(f"\n   📊 Voice Test Results: {successful_voices}/{len(voices)} voices working")
+        
+        # Return True if at least half the voices work (indicating API is functional)
+        return successful_voices >= len(voices) // 2
+
+    def test_voice_error_handling(self):
+        """Test voice endpoints error handling scenarios"""
+        print("\n🚨 Testing Voice Error Handling...")
+        
+        test_cases = [
+            {
+                "name": "Empty text for TTS",
+                "endpoint": "voice/synthesize",
+                "method": "POST",
+                "data": {"user_id": "test-user", "text": "", "voice": "alloy"},
+                "expected_status": 400,
+                "description": "Should reject empty text"
+            },
+            {
+                "name": "Invalid voice for TTS",
+                "endpoint": "voice/synthesize", 
+                "method": "POST",
+                "data": {"user_id": "test-user", "text": "Test", "voice": "invalid_voice"},
+                "expected_status": [400, 500],  # Could be validation error or OpenAI error
+                "description": "Should handle invalid voice option"
+            },
+            {
+                "name": "Invalid audio format for transcription",
+                "endpoint": "voice/transcribe",
+                "method": "POST",
+                "files": {'file': ('test.txt', io.BytesIO(b"not audio data"), 'text/plain')},
+                "params": {'user_id': 'test-user'},
+                "expected_status": 400,
+                "description": "Should reject non-audio files"
+            }
+        ]
+        
+        successful_tests = 0
+        
+        for test_case in test_cases:
+            self.tests_run += 1
+            print(f"🔍 Testing: {test_case['name']}")
+            
+            try:
+                url = f"{self.base_url}/{test_case['endpoint']}"
+                
+                if test_case['method'] == 'POST':
+                    if 'files' in test_case:
+                        # File upload test
+                        response = requests.post(
+                            url, 
+                            files=test_case['files'], 
+                            params=test_case.get('params', {}),
+                            timeout=30
+                        )
+                    else:
+                        # JSON data test
+                        response = requests.post(url, json=test_case['data'], timeout=30)
+                
+                expected_statuses = test_case['expected_status']
+                if not isinstance(expected_statuses, list):
+                    expected_statuses = [expected_statuses]
+                
+                if response.status_code in expected_statuses:
+                    successful_tests += 1
+                    self.tests_passed += 1
+                    print(f"   ✅ {test_case['description']} - Status: {response.status_code}")
+                else:
+                    print(f"   ❌ Expected {expected_statuses}, got {response.status_code}")
+                    try:
+                        error_data = response.json()
+                        print(f"   Error: {error_data.get('detail', 'Unknown error')}")
+                    except:
+                        print(f"   Error: {response.text[:200]}")
+                        
+            except Exception as e:
+                print(f"   ❌ Test failed with exception: {str(e)}")
+        
+        print(f"\n   📊 Error Handling Results: {successful_tests}/{len(test_cases)} tests passed")
+        return successful_tests >= len(test_cases) // 2
+
+    def test_openai_api_key_validation(self):
+        """Test if OpenAI API key is properly loaded and functional"""
+        print("\n🔑 Testing OpenAI API Key Validation...")
+        
+        # Test with a simple TTS request to validate API key
+        tts_data = {
+            "user_id": "test-api-key",
+            "text": "Testing OpenAI API key validation for modQ voice features.",
+            "voice": "alloy",
+            "speed": 1.0
+        }
+        
+        self.tests_run += 1
+        print(f"🔍 Validating OpenAI API Key...")
+        
+        try:
+            response = requests.post(f"{self.base_url}/voice/synthesize", json=tts_data, timeout=30)
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ OpenAI API key is valid and working")
+                print(f"   Generated audio size: {len(response.content)} bytes")
+                return True
+            elif response.status_code == 401 or response.status_code == 403:
+                print(f"❌ CRITICAL: OpenAI API key authentication failed (Status: {response.status_code})")
+                try:
+                    error_data = response.json()
+                    print(f"   Error: {error_data.get('detail', 'Authentication failed')}")
+                except:
+                    print(f"   Error: Authentication failed")
+                return False
+            elif response.status_code == 500:
+                try:
+                    error_data = response.json()
+                    error_detail = error_data.get('detail', '')
+                    if 'API key' in error_detail or 'authentication' in error_detail.lower():
+                        print(f"❌ CRITICAL: OpenAI API key is invalid or expired")
+                        print(f"   Error: {error_detail}")
+                        return False
+                    else:
+                        print(f"❌ Server error (not API key related): {error_detail}")
+                        return False
+                except:
+                    print(f"❌ Server error occurred during API key validation")
+                    return False
+            else:
+                print(f"❌ Unexpected response during API key validation: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ API key validation failed with exception: {str(e)}")
+            return False
+
+    def test_websocket_voice_integration(self):
+        """Test WebSocket handlers for voice_transcription and tts_request"""
+        test_user_id = "test-voice-ws"
+        print(f"\n🎤🔌 Testing WebSocket Voice Integration for user: {test_user_id}")
+        
+        ws_url = f"{self.ws_base_url}/ws/chat/{test_user_id}"
+        print(f"   WebSocket URL: {ws_url}")
+        
+        self.websocket_messages = []
+        connection_successful = False
+        session_id_received = None
+        voice_responses_received = []
+        
+        def on_message(ws, message):
+            try:
+                data = json.loads(message)
+                self.websocket_messages.append(data)
+                message_type = data.get('type', 'unknown')
+                print(f"   📨 Received [{message_type}]: {json.dumps(data, indent=2)[:200]}...")
+                
+                nonlocal session_id_received, voice_responses_received
+                
+                if message_type == 'connection_established':
+                    session_id_received = data.get('session_id')
+                    print(f"   ✅ Connection established with session_id: {session_id_received}")
+                    
+                    # Test voice transcription request
+                    voice_transcription_message = {
+                        "type": "voice_transcription",
+                        "audio_data": base64.b64encode(b"fake_audio_data_for_testing").decode('utf-8'),
+                        "audio_format": "webm"
+                    }
+                    
+                    print(f"   📤 Sending voice transcription request")
+                    ws.send(json.dumps(voice_transcription_message))
+                    
+                elif message_type == 'transcription_success':
+                    transcript = data.get('transcript', '')
+                    voice_responses_received.append('transcription_success')
+                    print(f"   ✅ Voice transcription successful: {transcript}")
+                    
+                    # Test TTS request after transcription
+                    tts_message = {
+                        "type": "tts_request",
+                        "text": "Hello, this is a test of WebSocket TTS functionality.",
+                        "voice": "alloy",
+                        "speed": 1.0
+                    }
+                    
+                    print(f"   📤 Sending TTS request")
+                    ws.send(json.dumps(tts_message))
+                    
+                elif message_type == 'transcription_error':
+                    error_msg = data.get('message', '')
+                    voice_responses_received.append('transcription_error')
+                    print(f"   ⚠️ Voice transcription error: {error_msg}")
+                    
+                    # Still test TTS even if transcription fails
+                    tts_message = {
+                        "type": "tts_request",
+                        "text": "Testing TTS after transcription error.",
+                        "voice": "alloy"
+                    }
+                    ws.send(json.dumps(tts_message))
+                    
+                elif message_type == 'tts_success':
+                    audio_data = data.get('audio_data', '')
+                    voice_responses_received.append('tts_success')
+                    print(f"   ✅ TTS generation successful, audio data length: {len(audio_data)}")
+                    # Close connection after receiving TTS response
+                    time.sleep(1)
+                    ws.close()
+                    
+                elif message_type == 'tts_error':
+                    error_msg = data.get('message', '')
+                    voice_responses_received.append('tts_error')
+                    print(f"   ⚠️ TTS error: {error_msg}")
+                    # Close connection after error
+                    time.sleep(1)
+                    ws.close()
+                    
+            except Exception as e:
+                print(f"   ❌ Message parsing error: {e}")
+
+        def on_error(ws, error):
+            print(f"   ❌ WebSocket error: {error}")
+
+        def on_close(ws, close_status_code, close_msg):
+            print(f"   🔌 WebSocket closed: {close_status_code} - {close_msg}")
+
+        def on_open(ws):
+            print(f"   ✅ WebSocket connection opened for voice test")
+            nonlocal connection_successful
+            connection_successful = True
+
+        try:
+            # Create WebSocket connection
+            ws = websocket.WebSocketApp(
+                ws_url,
+                on_open=on_open,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close
+            )
+            
+            # Run WebSocket in a separate thread with timeout
+            ws_thread = threading.Thread(target=ws.run_forever)
+            ws_thread.daemon = True
+            ws_thread.start()
+            
+            # Wait for connection, voice message exchange
+            time.sleep(10)  # Allow time for voice processing
+            
+            self.tests_run += 1
+            
+            # Evaluate test success
+            success_criteria = [
+                connection_successful,
+                session_id_received is not None,
+                len(voice_responses_received) > 0
+            ]
+            
+            if all(success_criteria):
+                self.tests_passed += 1
+                print(f"   ✅ WebSocket voice integration test PASSED")
+                print(f"   📊 Total messages received: {len(self.websocket_messages)}")
+                print(f"   🎤 Voice responses received: {voice_responses_received}")
+                return True
+            else:
+                print(f"   ❌ WebSocket voice integration test FAILED")
+                print(f"   Connection successful: {connection_successful}")
+                print(f"   Session ID received: {session_id_received}")
+                print(f"   Voice responses: {voice_responses_received}")
+                return False
+                
+        except Exception as e:
+            print(f"   ❌ WebSocket voice test failed: {str(e)}")
+            return False
+
     def test_websocket_connection(self):
         """Test WebSocket connection establishment and initial handshake"""
         test_user_id = "test-user-123"
