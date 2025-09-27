@@ -328,7 +328,7 @@ class ModQAPITester:
         return False
 
     def test_voice_transcription_endpoint(self):
-        """Test voice transcription REST endpoint - should return 501 with proper error message"""
+        """Test voice transcription REST endpoint with OpenAI integration"""
         print("\n🎤 Testing Voice Transcription Endpoint...")
         
         # Create a simple test audio file (mock data)
@@ -349,27 +349,52 @@ class ModQAPITester:
             response = requests.post(url, files=files, params=params, timeout=30)
             print(f"   Status Code: {response.status_code}")
             
-            # We expect 501 (Not Implemented) due to API key incompatibility
-            if response.status_code == 501:
+            # Check if OpenAI API key is working
+            if response.status_code == 200:
                 self.tests_passed += 1
-                print(f"✅ Correct 501 status returned")
+                print(f"✅ Voice transcription working with OpenAI API")
+                try:
+                    response_data = response.json()
+                    transcript = response_data.get('transcript', '')
+                    print(f"   Transcript: {transcript}")
+                    return True
+                except:
+                    print(f"   ⚠️ Could not parse transcription response")
+                    return False
+            elif response.status_code == 500:
+                # Check if it's an OpenAI API key issue
                 try:
                     error_data = response.json()
                     error_detail = error_data.get('detail', '')
                     print(f"   Error Message: {error_detail}")
                     
-                    # Check if error message mentions API key incompatibility
-                    if 'API key' in error_detail and 'OpenAI' in error_detail:
-                        print(f"   ✅ Proper error message about API key incompatibility")
+                    if 'API key' in error_detail or 'OpenAI' in error_detail or 'authentication' in error_detail.lower():
+                        print(f"❌ CRITICAL: OpenAI API key authentication failed")
+                        print(f"   This indicates the OpenAI API key is invalid or expired")
+                        return False
+                    else:
+                        print(f"❌ Server error: {error_detail}")
+                        return False
+                except:
+                    print(f"❌ Server error with unparseable response")
+                    return False
+            elif response.status_code == 400:
+                try:
+                    error_data = response.json()
+                    error_detail = error_data.get('detail', '')
+                    print(f"   Error Message: {error_detail}")
+                    if 'audio' in error_detail.lower():
+                        print(f"✅ Proper validation - invalid audio format rejected")
+                        self.tests_passed += 1
                         return True
                     else:
-                        print(f"   ⚠️ Error message doesn't mention API key issue")
-                        return True  # Still pass since 501 is correct
+                        print(f"❌ Unexpected 400 error: {error_detail}")
+                        return False
                 except:
-                    print(f"   ⚠️ Could not parse error response")
-                    return True  # Still pass since 501 is correct
+                    print(f"❌ 400 error with unparseable response")
+                    return False
             else:
-                print(f"❌ Expected 501, got {response.status_code}")
+                print(f"❌ Unexpected status code: {response.status_code}")
                 try:
                     error_data = response.json()
                     print(f"   Response: {error_data}")
