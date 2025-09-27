@@ -926,8 +926,29 @@ const WidgetDemo = () => {
               </div>
             </TabsContent>
 
-            {/* Voice Tab - Removed for now */}
-            {/* Voice features will be implemented in future updates */}
+            {/* Voice Tab */}
+            <TabsContent value="voice" className="mt-6">
+              <VoiceInterface 
+                currentUser={currentUser}
+                voiceSettings={config.voice_settings}
+                onVoiceSettingsChange={(newSettings) => {
+                  setConfig({
+                    ...config,
+                    voice_settings: { ...config.voice_settings, ...newSettings }
+                  });
+                }}
+                onTranscriptionResult={(transcript) => {
+                  // Add transcribed text to chat input
+                  setCurrentMessage(transcript);
+                  toast.success('Voice transcribed successfully!');
+                }}
+                onTTSResult={(audioData) => {
+                  // Handle TTS audio playback
+                  console.log('TTS audio received');
+                }}
+                ref={voiceInterfaceRef}
+              />
+            </TabsContent>
 
             {/* Sessions Tab */}
             <TabsContent value="sessions" className="mt-6">
