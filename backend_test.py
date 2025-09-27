@@ -9,7 +9,7 @@ import io
 from datetime import datetime
 
 class ModQAPITester:
-    def __init__(self, base_url="https://quantum-crm.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://quantum-crm-hub.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.ws_base_url = base_url.replace("https://", "wss://").replace("/api", "")
         self.tests_run = 0
