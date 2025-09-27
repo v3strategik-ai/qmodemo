@@ -1073,11 +1073,45 @@ async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
 
 @api_router.post("/voice/synthesize")
 async def synthesize_speech(request: TTSRequest):
-    """Fallback endpoint for text-to-speech - currently disabled due to API key incompatibility"""
-    raise HTTPException(
-        status_code=501, 
-        detail="Text-to-speech temporarily disabled. OpenAI API key required for TTS integration. Emergent LLM key is not compatible with OpenAI voice APIs."
-    )
+    """Generate speech from text using OpenAI TTS"""
+    try:
+        if not request.text.strip():
+            raise HTTPException(status_code=400, detail="Text is required for speech synthesis")
+        
+        # Initialize OpenAI client
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        
+        # Generate speech
+        response = await client.audio.speech.create(
+            model="tts-1",
+            voice=request.voice,
+            input=request.text,
+            speed=request.speed
+        )
+        
+        # Return audio as streaming response
+        from fastapi.responses import StreamingResponse
+        import io
+        
+        def generate():
+            yield response.content
+        
+        logging.info(f"TTS generation successful for user {request.user_id}")
+        
+        return StreamingResponse(
+            io.BytesIO(response.content),
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline; filename=speech.mp3"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"TTS error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate speech: {str(e)}")
 
 # Integration Management routes
 @api_router.get("/integrations/user/{user_id}", response_model=List[UserIntegration])
