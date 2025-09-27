@@ -430,6 +430,134 @@ class LogoUploadResponse(BaseModel):
     logo_url: str
     message: str
 
+# Workflow Builder Models
+class WorkflowNode(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str  # trigger, action, condition, ai_response, integration
+    name: str
+    description: Optional[str] = None
+    position: Dict[str, float] = {"x": 0, "y": 0}  # Canvas position
+    configuration: Dict[str, Any] = {}
+    inputs: List[str] = []  # Connected input node IDs
+    outputs: List[str] = []  # Connected output node IDs
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WorkflowConnection(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    source_node_id: str
+    target_node_id: str
+    source_port: str = "output"  # output port name
+    target_port: str = "input"   # input port name
+    condition: Optional[str] = None  # Conditional logic
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Workflow(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    team_id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    category: str = "general"  # lead_qualification, email_automation, task_management, customer_support
+    nodes: List[WorkflowNode] = []
+    connections: List[WorkflowConnection] = []
+    triggers: List[str] = []  # Trigger types that start this workflow
+    is_active: bool = False
+    is_template: bool = False
+    template_id: Optional[str] = None  # If created from template
+    execution_count: int = 0
+    last_executed: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WorkflowTemplate(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    category: str
+    industry: Optional[str] = None
+    use_case: str
+    complexity: str = "beginner"  # beginner, intermediate, advanced
+    estimated_time: str = "5-10 minutes"
+    nodes: List[WorkflowNode] = []
+    connections: List[WorkflowConnection] = []
+    preview_image: Optional[str] = None
+    tags: List[str] = []
+    is_system_template: bool = True
+    usage_count: int = 0
+    rating: float = 0.0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WorkflowExecution(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workflow_id: str
+    trigger_data: Dict[str, Any] = {}
+    status: str = "pending"  # pending, running, completed, failed, cancelled
+    current_node_id: Optional[str] = None
+    execution_path: List[str] = []  # Node IDs in execution order
+    results: Dict[str, Any] = {}
+    error_message: Optional[str] = None
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[datetime] = None
+    execution_time_ms: Optional[int] = None
+
+class WorkflowMetrics(BaseModel):
+    workflow_id: str
+    total_executions: int = 0
+    successful_executions: int = 0
+    failed_executions: int = 0
+    average_execution_time_ms: float = 0.0
+    last_24h_executions: int = 0
+    success_rate: float = 0.0
+    most_common_failure: Optional[str] = None
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Request Models for Workflow Builder
+class WorkflowCreate(BaseModel):
+    user_id: str
+    team_id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    category: str = "general"
+    template_id: Optional[str] = None
+
+class WorkflowUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    nodes: Optional[List[WorkflowNode]] = None
+    connections: Optional[List[WorkflowConnection]] = None
+    triggers: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+class WorkflowExecuteRequest(BaseModel):
+    workflow_id: str
+    trigger_data: Dict[str, Any] = {}
+    user_id: str
+
+class NodeCreate(BaseModel):
+    workflow_id: str
+    type: str
+    name: str
+    description: Optional[str] = None
+    position: Dict[str, float] = {"x": 0, "y": 0}
+    configuration: Dict[str, Any] = {}
+
+class NodeUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    position: Optional[Dict[str, float]] = None
+    configuration: Optional[Dict[str, Any]] = None
+    inputs: Optional[List[str]] = None
+    outputs: Optional[List[str]] = None
+
+class ConnectionCreate(BaseModel):
+    workflow_id: str
+    source_node_id: str
+    target_node_id: str
+    source_port: str = "output"
+    target_port: str = "input"
+    condition: Optional[str] = None
+
 # WebSocket Connection Manager
 class ConnectionManager:
     def __init__(self):
