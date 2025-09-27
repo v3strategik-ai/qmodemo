@@ -1257,9 +1257,13 @@ class ModQAPITester:
         
         print(f"\n📧 Testing Team Invitation for team: {self.test_team_id}")
         
+        # Use unique email to avoid conflicts
+        timestamp = datetime.now().strftime('%H%M%S%f')
+        unique_email = f"colleague_{timestamp}@company.com"
+        
         invite_data = {
             "team_id": self.test_team_id,
-            "email": "colleague@company.com",
+            "email": unique_email,
             "role": "manager",
             "inviter_id": self.test_team_owner_id
         }
@@ -1275,6 +1279,7 @@ class ModQAPITester:
         if success and response:
             # Store invitation ID for acceptance test
             self.test_invitation_id = response.get('id')
+            self.test_invitation_email = unique_email  # Store for later use
             
             # Verify response structure
             required_fields = ['id', 'team_id', 'inviter_id', 'email', 'role', 'status', 'created_at', 'expires_at']
