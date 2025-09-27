@@ -1060,7 +1060,6 @@ async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
             
         finally:
             # Clean up temp file
-            import os
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
         
