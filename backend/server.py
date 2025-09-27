@@ -1838,6 +1838,545 @@ async def get_user_white_label_config(user_id: str):
         logging.error(f"Get white-label config error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve white-label configuration")
 
+# Workflow Builder routes
+@api_router.post("/workflows/create", response_model=Workflow)
+async def create_workflow(workflow_data: WorkflowCreate):
+    """Create a new workflow"""
+    try:
+        # If template_id provided, load template and create from it
+        if workflow_data.template_id:
+            template = await db.workflow_templates.find_one({"id": workflow_data.template_id})
+            if not template:
+                raise HTTPException(status_code=404, detail="Workflow template not found")
+            
+            # Create workflow from template
+            workflow = Workflow(
+                **workflow_data.dict(exclude={"template_id"}),
+                nodes=[WorkflowNode(**node) for node in template["nodes"]],
+                connections=[WorkflowConnection(**conn) for conn in template["connections"]],
+                template_id=workflow_data.template_id
+            )
+            
+            # Update template usage count
+            await db.workflow_templates.update_one(
+                {"id": workflow_data.template_id},
+                {"$inc": {"usage_count": 1}}
+            )
+        else:
+            # Create empty workflow
+            workflow = Workflow(**workflow_data.dict())
+        
+        await db.workflows.insert_one(workflow.dict())
+        
+        logging.info(f"Workflow '{workflow.name}' created by user {workflow_data.user_id}")
+        return workflow
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Create workflow error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create workflow")
+
+@api_router.get("/workflows/user/{user_id}", response_model=List[Workflow])
+async def get_user_workflows(user_id: str, category: Optional[str] = None, active_only: bool = False):
+    """Get workflows for a user"""
+    try:
+        query = {"user_id": user_id}
+        
+        if category:
+            query["category"] = category
+        
+        if active_only:
+            query["is_active"] = True
+        
+        workflows = await db.workflows.find(query).sort("updated_at", -1).to_list(100)
+        return [Workflow(**workflow) for workflow in workflows]
+        
+    except Exception as e:
+        logging.error(f"Get user workflows error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve user workflows")
+
+@api_router.get("/workflows/{workflow_id}", response_model=Workflow)
+async def get_workflow(workflow_id: str, user_id: str):
+    """Get a specific workflow"""
+    try:
+        workflow = await db.workflows.find_one({"id": workflow_id})
+        
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        # Check access permissions (user owns workflow or is team member)
+        if workflow["user_id"] != user_id:
+            if workflow.get("team_id"):
+                team_member = await db.team_members.find_one({
+                    "team_id": workflow["team_id"],
+                    "user_id": user_id,
+                    "status": "active"
+                })
+                if not team_member:
+                    raise HTTPException(status_code=403, detail="Access denied")
+            else:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return Workflow(**workflow)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get workflow error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve workflow")
+
+@api_router.put("/workflows/{workflow_id}", response_model=Workflow)
+async def update_workflow(workflow_id: str, workflow_updates: WorkflowUpdate, user_id: str):
+    """Update a workflow"""
+    try:
+        # Check ownership
+        workflow = await db.workflows.find_one({"id": workflow_id, "user_id": user_id})
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found or access denied")
+        
+        # Update fields
+        update_data = {k: v for k, v in workflow_updates.dict().items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc)
+        
+        # Handle special fields that need conversion
+        if "nodes" in update_data:
+            update_data["nodes"] = [node.dict() if isinstance(node, WorkflowNode) else node for node in update_data["nodes"]]
+        
+        if "connections" in update_data:
+            update_data["connections"] = [conn.dict() if isinstance(conn, WorkflowConnection) else conn for conn in update_data["connections"]]
+        
+        await db.workflows.update_one(
+            {"id": workflow_id},
+            {"$set": update_data}
+        )
+        
+        # Get updated workflow
+        updated_workflow = await db.workflows.find_one({"id": workflow_id})
+        
+        logging.info(f"Workflow {workflow_id} updated by user {user_id}")
+        return Workflow(**updated_workflow)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Update workflow error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update workflow")
+
+@api_router.delete("/workflows/{workflow_id}")
+async def delete_workflow(workflow_id: str, user_id: str):
+    """Delete a workflow"""
+    try:
+        result = await db.workflows.delete_one({"id": workflow_id, "user_id": user_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Workflow not found or access denied")
+        
+        # Also delete related executions
+        await db.workflow_executions.delete_many({"workflow_id": workflow_id})
+        
+        logging.info(f"Workflow {workflow_id} deleted by user {user_id}")
+        return {"status": "success", "message": "Workflow deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Delete workflow error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete workflow")
+
+@api_router.get("/workflow-templates")
+async def get_workflow_templates(category: Optional[str] = None, industry: Optional[str] = None):
+    """Get available workflow templates"""
+    try:
+        # System templates - in production these would come from database
+        templates = [
+            {
+                "id": "lead-qualification-basic",
+                "name": "Lead Qualification Workflow",
+                "description": "Automatically qualify and score incoming leads based on predefined criteria",
+                "category": "lead_qualification",
+                "industry": "sales",
+                "use_case": "Qualify leads from website forms and route to appropriate sales team",
+                "complexity": "beginner",
+                "estimated_time": "5-10 minutes",
+                "tags": ["leads", "qualification", "scoring", "automation"],
+                "is_system_template": True,
+                "usage_count": 1250,
+                "rating": 4.8,
+                "nodes": [
+                    {
+                        "id": "trigger-1",
+                        "type": "trigger",
+                        "name": "Form Submission",
+                        "description": "Triggers when a lead form is submitted",
+                        "position": {"x": 100, "y": 100},
+                        "configuration": {"form_id": "contact_form", "required_fields": ["email", "company"]}
+                    },
+                    {
+                        "id": "condition-1",
+                        "type": "condition",
+                        "name": "Check Company Size",
+                        "description": "Filter leads by company size",
+                        "position": {"x": 300, "y": 100},
+                        "configuration": {"field": "company_size", "operator": ">=", "value": 50}
+                    },
+                    {
+                        "id": "ai-1",
+                        "type": "ai_response",
+                        "name": "AI Lead Scoring",
+                        "description": "Use AI to score lead quality",
+                        "position": {"x": 500, "y": 100},
+                        "configuration": {"personality": "Sales Manager", "prompt": "Score this lead from 1-100 based on company size, industry, and title"}
+                    },
+                    {
+                        "id": "action-1",
+                        "type": "action",
+                        "name": "Route to Sales Team",
+                        "description": "Assign lead to appropriate sales representative",
+                        "position": {"x": 700, "y": 100},
+                        "configuration": {"action_type": "assign_lead", "team": "enterprise_sales"}
+                    }
+                ],
+                "connections": [
+                    {
+                        "id": "conn-1",
+                        "source_node_id": "trigger-1",
+                        "target_node_id": "condition-1",
+                        "source_port": "output",
+                        "target_port": "input"
+                    },
+                    {
+                        "id": "conn-2",
+                        "source_node_id": "condition-1",
+                        "target_node_id": "ai-1",
+                        "source_port": "true",
+                        "target_port": "input",
+                        "condition": "company_size >= 50"
+                    },
+                    {
+                        "id": "conn-3",
+                        "source_node_id": "ai-1",
+                        "target_node_id": "action-1",
+                        "source_port": "output",
+                        "target_port": "input"
+                    }
+                ]
+            },
+            {
+                "id": "email-nurture-sequence",
+                "name": "Email Nurture Sequence",
+                "description": "Automated email sequence for lead nurturing with AI-personalized content",
+                "category": "email_automation",
+                "industry": "marketing",
+                "use_case": "Send personalized email sequences to nurture leads over time",
+                "complexity": "intermediate",
+                "estimated_time": "15-20 minutes",
+                "tags": ["email", "nurturing", "personalization", "automation"],
+                "is_system_template": True,
+                "usage_count": 890,
+                "rating": 4.6,
+                "nodes": [
+                    {
+                        "id": "trigger-2",
+                        "type": "trigger",
+                        "name": "Lead Added",
+                        "description": "Triggers when a new lead is added to nurture sequence",
+                        "position": {"x": 100, "y": 200},
+                        "configuration": {"trigger_type": "lead_added", "sequence_name": "nurture"}
+                    },
+                    {
+                        "id": "ai-2",
+                        "type": "ai_response",
+                        "name": "Personalize Content",
+                        "description": "AI personalizes email content based on lead data",
+                        "position": {"x": 300, "y": 200},
+                        "configuration": {"personality": "Strategic Advisor", "prompt": "Create personalized email content for this lead"}
+                    },
+                    {
+                        "id": "action-2",
+                        "type": "action",
+                        "name": "Send Welcome Email",
+                        "description": "Send personalized welcome email",
+                        "position": {"x": 500, "y": 200},
+                        "configuration": {"action_type": "send_email", "template": "welcome", "delay": 0}
+                    },
+                    {
+                        "id": "action-3",
+                        "type": "action",
+                        "name": "Send Follow-up",
+                        "description": "Send follow-up email after 3 days",
+                        "position": {"x": 700, "y": 200},
+                        "configuration": {"action_type": "send_email", "template": "followup", "delay": 259200}
+                    }
+                ],
+                "connections": [
+                    {
+                        "id": "conn-4",
+                        "source_node_id": "trigger-2",
+                        "target_node_id": "ai-2",
+                        "source_port": "output",
+                        "target_port": "input"
+                    },
+                    {
+                        "id": "conn-5",
+                        "source_node_id": "ai-2",
+                        "target_node_id": "action-2",
+                        "source_port": "output",
+                        "target_port": "input"
+                    },
+                    {
+                        "id": "conn-6",
+                        "source_node_id": "action-2",
+                        "target_node_id": "action-3",
+                        "source_port": "success",
+                        "target_port": "input"
+                    }
+                ]
+            },
+            {
+                "id": "task-assignment-auto",
+                "name": "Smart Task Assignment",
+                "description": "Automatically assign tasks based on team availability and expertise",
+                "category": "task_management",
+                "industry": "general",
+                "use_case": "Route support tickets and tasks to the best available team member",
+                "complexity": "intermediate",
+                "estimated_time": "10-15 minutes",
+                "tags": ["tasks", "assignment", "optimization", "team"],
+                "is_system_template": True,
+                "usage_count": 720,
+                "rating": 4.7,
+                "nodes": [
+                    {
+                        "id": "trigger-3",
+                        "type": "trigger",
+                        "name": "New Task Created",
+                        "description": "Triggers when a new task or ticket is created",
+                        "position": {"x": 100, "y": 300},
+                        "configuration": {"trigger_type": "task_created", "source": "any"}
+                    },
+                    {
+                        "id": "ai-3",
+                        "type": "ai_response",
+                        "name": "Analyze Task",
+                        "description": "AI analyzes task complexity and required skills",
+                        "position": {"x": 300, "y": 300},
+                        "configuration": {"personality": "Tech Innovator", "prompt": "Analyze this task and determine required skills and complexity"}
+                    },
+                    {
+                        "id": "condition-2",
+                        "type": "condition",
+                        "name": "Check Urgency",
+                        "description": "Route based on task urgency",
+                        "position": {"x": 500, "y": 300},
+                        "configuration": {"field": "priority", "operator": "==", "value": "high"}
+                    },
+                    {
+                        "id": "action-4",
+                        "type": "action",
+                        "name": "Assign to Expert",
+                        "description": "Assign to team member with matching expertise",
+                        "position": {"x": 700, "y": 250},
+                        "configuration": {"action_type": "assign_task", "criteria": "expertise_match"}
+                    },
+                    {
+                        "id": "action-5",
+                        "type": "action",
+                        "name": "Queue for Next Available",
+                        "description": "Add to general queue for next available team member",
+                        "position": {"x": 700, "y": 350},
+                        "configuration": {"action_type": "queue_task", "queue": "general"}
+                    }
+                ],
+                "connections": [
+                    {
+                        "id": "conn-7",
+                        "source_node_id": "trigger-3",
+                        "target_node_id": "ai-3",
+                        "source_port": "output",
+                        "target_port": "input"
+                    },
+                    {
+                        "id": "conn-8",
+                        "source_node_id": "ai-3",
+                        "target_node_id": "condition-2",
+                        "source_port": "output",
+                        "target_port": "input"
+                    },
+                    {
+                        "id": "conn-9",
+                        "source_node_id": "condition-2",
+                        "target_node_id": "action-4",
+                        "source_port": "true",
+                        "target_port": "input",
+                        "condition": "priority == high"
+                    },
+                    {
+                        "id": "conn-10",
+                        "source_node_id": "condition-2",
+                        "target_node_id": "action-5",
+                        "source_port": "false",
+                        "target_port": "input"
+                    }
+                ]
+            }
+        ]
+        
+        # Filter templates based on query parameters
+        filtered_templates = templates
+        if category:
+            filtered_templates = [t for t in filtered_templates if t["category"] == category]
+        if industry:
+            filtered_templates = [t for t in filtered_templates if t["industry"] == industry]
+        
+        return {"templates": filtered_templates}
+        
+    except Exception as e:
+        logging.error(f"Get workflow templates error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve workflow templates")
+
+@api_router.post("/workflows/execute", response_model=WorkflowExecution)
+async def execute_workflow(execution_request: WorkflowExecuteRequest):
+    """Execute a workflow (simulation for demo purposes)"""
+    try:
+        workflow = await db.workflows.find_one({"id": execution_request.workflow_id})
+        
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        if not workflow.get("is_active", False):
+            raise HTTPException(status_code=400, detail="Workflow is not active")
+        
+        # Create execution record
+        execution = WorkflowExecution(
+            workflow_id=execution_request.workflow_id,
+            trigger_data=execution_request.trigger_data,
+            status="running"
+        )
+        
+        await db.workflow_executions.insert_one(execution.dict())
+        
+        # Simulate execution (in production, this would be a background task)
+        import asyncio
+        await asyncio.sleep(1)  # Simulate processing time
+        
+        # Update execution as completed
+        execution_path = [node["id"] for node in workflow.get("nodes", [])]
+        results = {"message": "Workflow executed successfully", "nodes_processed": len(execution_path)}
+        
+        await db.workflow_executions.update_one(
+            {"id": execution.id},
+            {
+                "$set": {
+                    "status": "completed",
+                    "execution_path": execution_path,
+                    "results": results,
+                    "completed_at": datetime.now(timezone.utc),
+                    "execution_time_ms": 1000
+                }
+            }
+        )
+        
+        # Update workflow execution count
+        await db.workflows.update_one(
+            {"id": execution_request.workflow_id},
+            {
+                "$inc": {"execution_count": 1},
+                "$set": {"last_executed": datetime.now(timezone.utc)}
+            }
+        )
+        
+        # Get updated execution
+        updated_execution = await db.workflow_executions.find_one({"id": execution.id})
+        
+        logging.info(f"Workflow {execution_request.workflow_id} executed by user {execution_request.user_id}")
+        return WorkflowExecution(**updated_execution)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Execute workflow error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to execute workflow")
+
+@api_router.get("/workflows/{workflow_id}/executions", response_model=List[WorkflowExecution])
+async def get_workflow_executions(workflow_id: str, user_id: str, limit: int = 50):
+    """Get execution history for a workflow"""
+    try:
+        # Verify user has access to workflow
+        workflow = await db.workflows.find_one({"id": workflow_id, "user_id": user_id})
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found or access denied")
+        
+        executions = await db.workflow_executions.find(
+            {"workflow_id": workflow_id}
+        ).sort("started_at", -1).limit(limit).to_list(limit)
+        
+        return [WorkflowExecution(**execution) for execution in executions]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get workflow executions error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve workflow executions")
+
+@api_router.get("/workflows/{workflow_id}/metrics")
+async def get_workflow_metrics(workflow_id: str, user_id: str):
+    """Get workflow performance metrics"""
+    try:
+        # Verify user has access to workflow
+        workflow = await db.workflows.find_one({"id": workflow_id, "user_id": user_id})
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found or access denied")
+        
+        # Calculate metrics from executions
+        total_executions = await db.workflow_executions.count_documents({"workflow_id": workflow_id})
+        successful_executions = await db.workflow_executions.count_documents({
+            "workflow_id": workflow_id,
+            "status": "completed"
+        })
+        failed_executions = await db.workflow_executions.count_documents({
+            "workflow_id": workflow_id,
+            "status": "failed"
+        })
+        
+        # Calculate average execution time
+        executions_with_time = await db.workflow_executions.find({
+            "workflow_id": workflow_id,
+            "execution_time_ms": {"$exists": True}
+        }).to_list(1000)
+        
+        avg_execution_time = 0.0
+        if executions_with_time:
+            total_time = sum(ex.get("execution_time_ms", 0) for ex in executions_with_time)
+            avg_execution_time = total_time / len(executions_with_time)
+        
+        # Last 24 hours executions
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        last_24h_executions = await db.workflow_executions.count_documents({
+            "workflow_id": workflow_id,
+            "started_at": {"$gte": twenty_four_hours_ago}
+        })
+        
+        success_rate = (successful_executions / total_executions * 100) if total_executions > 0 else 0.0
+        
+        metrics = WorkflowMetrics(
+            workflow_id=workflow_id,
+            total_executions=total_executions,
+            successful_executions=successful_executions,
+            failed_executions=failed_executions,
+            average_execution_time_ms=avg_execution_time,
+            last_24h_executions=last_24h_executions,
+            success_rate=success_rate
+        )
+        
+        return metrics.dict()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get workflow metrics error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve workflow metrics")
+
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
 async def register_user(user_data: UserCreate):
