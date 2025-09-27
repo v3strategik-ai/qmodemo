@@ -2951,7 +2951,7 @@ def main():
         
         # Core functionality tests for context
         ("AI Personalities", tester.test_ai_personalities),
-        ("Session Management", tester.test_session_management),
+        ("Session Management", tester.test_session_management_for_workflow),
         
         # WebSocket tests (known issues)
         ("WebSocket Connection", tester.test_websocket_connection),
