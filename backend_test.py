@@ -2801,8 +2801,8 @@ class ModQAPITester:
 
     def test_delete_workflow(self):
         """Test DELETE /api/workflows/{workflow_id} to delete workflow"""
-        if not hasattr(self, 'test_template_workflow_id'):
-            print("❌ Skipping delete workflow test - no template workflow ID available")
+        if not hasattr(self, 'test_template_workflow_id') or not hasattr(self, 'workflow_test_user_id'):
+            print("❌ Skipping delete workflow test - missing IDs")
             return False
         
         print(f"\n🗑️ Testing Delete Workflow: {self.test_template_workflow_id}")
@@ -2810,7 +2810,7 @@ class ModQAPITester:
         success, response = self.run_test(
             "Delete Workflow",
             "DELETE",
-            f"workflows/{self.test_template_workflow_id}",
+            f"workflows/{self.test_template_workflow_id}?user_id={self.workflow_test_user_id}",
             200
         )
         
