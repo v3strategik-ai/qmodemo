@@ -2833,16 +2833,41 @@ class ModQAPITester:
 
     def test_delete_workflow(self):
         """Test DELETE /api/workflows/{workflow_id} to delete workflow"""
-        if not hasattr(self, 'test_template_workflow_id') or not hasattr(self, 'workflow_test_user_id'):
+        if not hasattr(self, 'test_workflow_id') or not hasattr(self, 'workflow_test_user_id'):
             print("❌ Skipping delete workflow test - missing IDs")
             return False
         
-        print(f"\n🗑️ Testing Delete Workflow: {self.test_template_workflow_id}")
+        # Create a separate workflow for deletion test
+        print(f"\n🗑️ Testing Delete Workflow...")
         
+        # First create a workflow to delete
+        delete_workflow_data = {
+            "user_id": self.workflow_test_user_id,
+            "name": "Test Workflow for Deletion",
+            "description": "This workflow will be deleted in the test",
+            "category": "general"
+        }
+        
+        create_success, create_response = self.run_test(
+            "Create Workflow for Deletion",
+            "POST",
+            "workflows/create",
+            200,
+            data=delete_workflow_data
+        )
+        
+        if not create_success or 'id' not in create_response:
+            print("❌ Failed to create workflow for deletion test")
+            return False
+        
+        delete_workflow_id = create_response['id']
+        print(f"   Created workflow for deletion: {delete_workflow_id}")
+        
+        # Now delete it
         success, response = self.run_test(
             "Delete Workflow",
             "DELETE",
-            f"workflows/{self.test_template_workflow_id}?user_id={self.workflow_test_user_id}",
+            f"workflows/{delete_workflow_id}?user_id={self.workflow_test_user_id}",
             200
         )
         
@@ -2855,7 +2880,7 @@ class ModQAPITester:
                 verify_success, verify_response = self.run_test(
                     "Verify Workflow Deletion",
                     "GET",
-                    f"workflows/{self.test_template_workflow_id}",
+                    f"workflows/{delete_workflow_id}?user_id={self.workflow_test_user_id}",
                     404  # Should return 404 Not Found
                 )
                 
