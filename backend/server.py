@@ -1028,11 +1028,48 @@ async def get_chat_history(user_id: str, session_id: Optional[str] = None, limit
 # Voice-related REST endpoints for fallback
 @api_router.post("/voice/transcribe")
 async def transcribe_audio(file: UploadFile = File(...), user_id: str = ""):
-    """Fallback endpoint for audio transcription - currently disabled due to API key incompatibility"""
-    raise HTTPException(
-        status_code=501, 
-        detail="Voice transcription temporarily disabled. OpenAI API key required for Whisper integration. Emergent LLM key is not compatible with OpenAI voice APIs."
-    )
+    """Transcribe audio file using OpenAI Whisper"""
+    try:
+        # Validate file type
+        if not file.content_type.startswith('audio/'):
+            raise HTTPException(status_code=400, detail="File must be an audio file")
+        
+        # Initialize OpenAI client
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        
+        # Read file content
+        audio_content = await file.read()
+        
+        # Create temporary file for OpenAI API
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
+            temp_file.write(audio_content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Transcribe using OpenAI Whisper
+            with open(temp_file_path, 'rb') as audio_file:
+                transcript = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text"
+                )
+            
+            logging.info(f"Voice transcription successful for user {user_id}")
+            return {"transcript": transcript, "user_id": user_id}
+            
+        finally:
+            # Clean up temp file
+            import os
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {str(e)}")
 
 @api_router.post("/voice/synthesize")
 async def synthesize_speech(request: TTSRequest):
