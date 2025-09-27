@@ -1308,16 +1308,16 @@ class ModQAPITester:
 
     def test_duplicate_invitation(self):
         """Test duplicate invitation prevention"""
-        if not hasattr(self, 'test_team_id') or not hasattr(self, 'test_team_owner_id'):
+        if not hasattr(self, 'test_team_id') or not hasattr(self, 'test_team_owner_id') or not hasattr(self, 'test_invitation_email'):
             print("❌ Skipping duplicate invitation test - no team data available")
             return False
         
         print(f"\n🚫 Testing Duplicate Invitation Prevention...")
         
-        # Try to send same invitation again
+        # Try to send same invitation again using the same email from previous test
         invite_data = {
             "team_id": self.test_team_id,
-            "email": "colleague@company.com",
+            "email": self.test_invitation_email,  # Use the same email from previous test
             "role": "employee",
             "inviter_id": self.test_team_owner_id
         }
