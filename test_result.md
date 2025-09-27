@@ -279,17 +279,53 @@
           agent: "main"
           comment: "Dynamic theme switching system with custom colors, dark/light modes, and branding integration"
 
-  - task: "Custom Domain Configuration"
+  - task: "Workflow Builder Backend"
     implemented: false
     working: "NA"
-    file: "/app/frontend/src/components/DomainConfiguration.js"
+    file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
-          comment: "Interface for custom domain setup, SSL configuration, and white-label domain management"
+          comment: "Starting implementation of workflow builder system with drag-drop designer, automation templates, and AI integration"
+
+  - task: "Workflow Designer Interface"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/components/WorkflowBuilder.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Drag-and-drop workflow designer with visual editor and pre-built automation templates"
+
+  - task: "Workflow Templates System"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/components/WorkflowTemplates.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Pre-built automation templates for lead qualification, email sequences, and task assignment"
+
+  - task: "Workflow Monitoring Dashboard"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/components/WorkflowMonitoring.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Visual workflow management, execution monitoring, and performance analytics interface"
 
 ## frontend:
   - task: "Streaming AI Response UI"
