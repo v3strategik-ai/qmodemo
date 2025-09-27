@@ -2558,8 +2558,8 @@ class ModQAPITester:
 
     def test_get_workflow_by_id(self):
         """Test GET /api/workflows/{workflow_id} to get specific workflow"""
-        if not hasattr(self, 'test_workflow_id'):
-            print("❌ Skipping get workflow by ID test - no workflow ID available")
+        if not hasattr(self, 'test_workflow_id') or not hasattr(self, 'workflow_test_user_id'):
+            print("❌ Skipping get workflow by ID test - missing IDs")
             return False
         
         print(f"\n🔍 Testing Get Workflow by ID: {self.test_workflow_id}")
@@ -2567,7 +2567,7 @@ class ModQAPITester:
         success, response = self.run_test(
             "Get Workflow by ID",
             "GET",
-            f"workflows/{self.test_workflow_id}",
+            f"workflows/{self.test_workflow_id}?user_id={self.workflow_test_user_id}",
             200
         )
         
