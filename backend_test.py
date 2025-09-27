@@ -1339,11 +1339,11 @@ class ModQAPITester:
         
         print(f"\n✅ Testing Accept Team Invitation: {self.test_invitation_id}")
         
-        # First create a user with the invited email
-        timestamp = datetime.now().strftime('%H%M%S')
+        # First create a user with the invited email (use unique timestamp)
+        timestamp = datetime.now().strftime('%H%M%S%f')  # Include microseconds for uniqueness
         invited_user_data = {
             "username": f"invited_user_{timestamp}",
-            "email": "colleague@company.com",
+            "email": f"colleague_{timestamp}@company.com",  # Use unique email
             "role": "employee"
         }
         
@@ -1361,22 +1361,49 @@ class ModQAPITester:
         
         invited_user_id = user_response['id']
         
-        # Accept invitation
-        success, response = self.run_test(
-            "Accept Team Invitation",
-            "POST",
-            f"teams/accept-invite/{self.test_invitation_id}?user_id={invited_user_id}",
-            200
-        )
-        
-        if success and response:
-            if response.get('status') == 'success':
-                print(f"   ✅ Invitation accepted successfully")
-                self.test_invited_user_id = invited_user_id
-                return True
+        # Update the invitation email to match the created user
+        # Since we can't modify the invitation, let's create a new one with the correct email
+        if hasattr(self, 'test_team_id') and hasattr(self, 'test_team_owner_id'):
+            invite_data = {
+                "team_id": self.test_team_id,
+                "email": invited_user_data['email'],  # Use the new unique email
+                "role": "manager",
+                "inviter_id": self.test_team_owner_id
+            }
+            
+            invite_success, invite_response = self.run_test(
+                "Create New Invitation for Accept Test",
+                "POST",
+                "teams/invite",
+                200,
+                data=invite_data
+            )
+            
+            if invite_success and 'id' in invite_response:
+                new_invitation_id = invite_response['id']
+                
+                # Accept the new invitation
+                success, response = self.run_test(
+                    "Accept Team Invitation",
+                    "POST",
+                    f"teams/accept-invite/{new_invitation_id}?user_id={invited_user_id}",
+                    200
+                )
+                
+                if success and response:
+                    if response.get('status') == 'success':
+                        print(f"   ✅ Invitation accepted successfully")
+                        self.test_invited_user_id = invited_user_id
+                        return True
+                    else:
+                        print(f"   ❌ Unexpected response: {response}")
+                        return False
             else:
-                print(f"   ❌ Unexpected response: {response}")
+                print("❌ Failed to create new invitation for accept test")
                 return False
+        else:
+            print("❌ Missing team data for accept test")
+            return False
         
         return False
 
