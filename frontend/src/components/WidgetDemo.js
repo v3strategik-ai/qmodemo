@@ -1313,20 +1313,7 @@ const WidgetDemo = () => {
               </Card>
             </TabsContent>
 
-            {/* Achievements Tab */}
-            <TabsContent value="achievements" className="mt-6">
-              <AchievementSystem 
-                userConfig={config}
-                chatMessages={messages}
-                knowledgeItems={knowledgeItems}
-                progressStats={{
-                  currentStreak: 3, // This would come from ProgressTracker in production
-                  totalConversations: messages.length,
-                  voiceInteractions: 0, // Track voice usage
-                  streamingMessages: messages.filter(m => m.is_streaming).length
-                }}
-              />
-            </TabsContent>
+            {/* Achievements Tab - Temporarily removed to make room for Voice tab */}
 
             {/* Legacy Automations Tab - keeping for backward compatibility */}
             <TabsContent value="automations" className="mt-6">
