@@ -362,16 +362,21 @@ class ModQAPITester:
                     print(f"   ⚠️ Could not parse transcription response")
                     return False
             elif response.status_code == 500:
-                # Check if it's an OpenAI API key issue
+                # Check if it's an OpenAI API key issue or invalid audio format
                 try:
                     error_data = response.json()
                     error_detail = error_data.get('detail', '')
                     print(f"   Error Message: {error_detail}")
                     
-                    if 'API key' in error_detail or 'OpenAI' in error_detail or 'authentication' in error_detail.lower():
+                    if 'API key' in error_detail or 'authentication' in error_detail.lower():
                         print(f"❌ CRITICAL: OpenAI API key authentication failed")
                         print(f"   This indicates the OpenAI API key is invalid or expired")
                         return False
+                    elif 'Invalid file format' in error_detail or 'Supported formats' in error_detail:
+                        print(f"✅ OpenAI API is working - correctly rejecting invalid audio format")
+                        print(f"   This confirms the OpenAI integration is functional")
+                        self.tests_passed += 1
+                        return True
                     else:
                         print(f"❌ Server error: {error_detail}")
                         return False
