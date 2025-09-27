@@ -902,6 +902,347 @@ async def get_available_integrations():
         logging.error(f"Get available integrations error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve available integrations")
 
+# Team Collaboration routes
+@api_router.post("/teams/create", response_model=Team)
+async def create_team(team_data: TeamCreate):
+    """Create a new team workspace"""
+    try:
+        team = Team(**team_data.dict())
+        await db.teams.insert_one(team.dict())
+        
+        # Create team owner membership
+        owner_member = TeamMember(
+            team_id=team.id,
+            user_id=team.owner_id,
+            role="owner",
+            permissions={
+                "can_invite_members": True,
+                "can_manage_integrations": True,
+                "can_edit_team_settings": True,
+                "can_view_analytics": True,
+                "can_create_shared_sessions": True,
+                "can_access_all_conversations": True
+            }
+        )
+        await db.team_members.insert_one(owner_member.dict())
+        
+        # Log team creation activity
+        activity = TeamActivity(
+            team_id=team.id,
+            user_id=team.owner_id,
+            activity_type="team_created",
+            description=f"Created team '{team.name}'",
+            metadata={"team_name": team.name}
+        )
+        await db.team_activities.insert_one(activity.dict())
+        
+        logging.info(f"Team '{team.name}' created by user {team.owner_id}")
+        return team
+        
+    except Exception as e:
+        logging.error(f"Create team error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create team")
+
+@api_router.get("/teams/user/{user_id}", response_model=List[Team])
+async def get_user_teams(user_id: str):
+    """Get all teams for a user"""
+    try:
+        # Find teams where user is a member
+        memberships = await db.team_members.find({"user_id": user_id, "status": "active"}).to_list(100)
+        team_ids = [membership["team_id"] for membership in memberships]
+        
+        if not team_ids:
+            return []
+        
+        teams = await db.teams.find({"id": {"$in": team_ids}, "is_active": True}).to_list(100)
+        return [Team(**team) for team in teams]
+        
+    except Exception as e:
+        logging.error(f"Get user teams error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve user teams")
+
+@api_router.get("/teams/{team_id}/members", response_model=List[TeamMember])
+async def get_team_members(team_id: str):
+    """Get all members of a team"""
+    try:
+        members = await db.team_members.find({"team_id": team_id}).to_list(100)
+        return [TeamMember(**member) for member in members]
+        
+    except Exception as e:
+        logging.error(f"Get team members error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve team members")
+
+@api_router.post("/teams/invite", response_model=TeamInvitation)
+async def invite_team_member(invite_data: TeamInviteRequest):
+    """Invite a new member to the team"""
+    try:
+        # Check if user has permission to invite
+        inviter_member = await db.team_members.find_one({
+            "team_id": invite_data.team_id,
+            "user_id": invite_data.inviter_id,
+            "status": "active"
+        })
+        
+        if not inviter_member or not inviter_member.get("permissions", {}).get("can_invite_members", False):
+            raise HTTPException(status_code=403, detail="No permission to invite members")
+        
+        # Check if email is already invited or user is already a member
+        existing_invite = await db.team_invitations.find_one({
+            "team_id": invite_data.team_id,
+            "email": invite_data.email,
+            "status": "pending"
+        })
+        
+        if existing_invite:
+            raise HTTPException(status_code=409, detail="User already invited")
+        
+        # Check if user with this email is already a team member
+        user_with_email = await db.users.find_one({"email": invite_data.email})
+        if user_with_email:
+            existing_member = await db.team_members.find_one({
+                "team_id": invite_data.team_id,
+                "user_id": user_with_email["id"]
+            })
+            if existing_member:
+                raise HTTPException(status_code=409, detail="User is already a team member")
+        
+        # Create invitation
+        invitation = TeamInvitation(**invite_data.dict())
+        await db.team_invitations.insert_one(invitation.dict())
+        
+        # Log activity
+        activity = TeamActivity(
+            team_id=invite_data.team_id,
+            user_id=invite_data.inviter_id,
+            activity_type="member_invited",
+            description=f"Invited {invite_data.email} as {invite_data.role}",
+            metadata={"email": invite_data.email, "role": invite_data.role}
+        )
+        await db.team_activities.insert_one(activity.dict())
+        
+        # In a real implementation, this would send an email invitation
+        logging.info(f"Invitation sent to {invite_data.email} for team {invite_data.team_id}")
+        
+        return invitation
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Invite team member error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send invitation")
+
+@api_router.post("/teams/accept-invite/{invitation_id}")
+async def accept_team_invitation(invitation_id: str, user_id: str):
+    """Accept a team invitation"""
+    try:
+        # Get invitation
+        invitation = await db.team_invitations.find_one({"id": invitation_id})
+        if not invitation:
+            raise HTTPException(status_code=404, detail="Invitation not found")
+        
+        if invitation["status"] != "pending":
+            raise HTTPException(status_code=400, detail="Invitation is not pending")
+        
+        if invitation["expires_at"] < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Invitation has expired")
+        
+        # Get user info
+        user = await db.users.find_one({"id": user_id})
+        if not user or user["email"] != invitation["email"]:
+            raise HTTPException(status_code=403, detail="Invitation is not for this user")
+        
+        # Create team member
+        permissions = {
+            "can_invite_members": invitation["role"] in ["owner", "admin"],
+            "can_manage_integrations": invitation["role"] in ["owner", "admin", "manager"],
+            "can_edit_team_settings": invitation["role"] in ["owner", "admin"],
+            "can_view_analytics": True,
+            "can_create_shared_sessions": True,
+            "can_access_all_conversations": invitation["role"] in ["owner", "admin", "manager"]
+        }
+        
+        member = TeamMember(
+            team_id=invitation["team_id"],
+            user_id=user_id,
+            role=invitation["role"],
+            permissions=permissions
+        )
+        await db.team_members.insert_one(member.dict())
+        
+        # Update invitation status
+        await db.team_invitations.update_one(
+            {"id": invitation_id},
+            {
+                "$set": {
+                    "status": "accepted",
+                    "accepted_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Log activity
+        activity = TeamActivity(
+            team_id=invitation["team_id"],
+            user_id=user_id,
+            activity_type="member_joined",
+            description=f"{user['username']} joined the team as {invitation['role']}",
+            metadata={"username": user["username"], "role": invitation["role"]}
+        )
+        await db.team_activities.insert_one(activity.dict())
+        
+        logging.info(f"User {user_id} accepted invitation to team {invitation['team_id']}")
+        
+        return {"status": "success", "message": "Invitation accepted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Accept invitation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to accept invitation")
+
+@api_router.get("/teams/{team_id}/shared-conversations", response_model=List[SharedConversation])
+async def get_shared_conversations(team_id: str, user_id: str):
+    """Get shared conversations for a team"""
+    try:
+        # Verify user is team member
+        member = await db.team_members.find_one({
+            "team_id": team_id,
+            "user_id": user_id,
+            "status": "active"
+        })
+        
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a team member")
+        
+        # Get shared conversations
+        conversations = await db.shared_conversations.find({"team_id": team_id}).to_list(100)
+        
+        # Filter based on permissions and visibility
+        filtered_conversations = []
+        for conv in conversations:
+            if conv["is_public"] or user_id in conv["participants"] or member["permissions"]["can_access_all_conversations"]:
+                filtered_conversations.append(conv)
+        
+        return [SharedConversation(**conv) for conv in filtered_conversations]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get shared conversations error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve shared conversations")
+
+@api_router.post("/teams/shared-conversations/create", response_model=SharedConversation)
+async def create_shared_conversation(conversation_data: SharedConversationCreate):
+    """Create a shared conversation for the team"""
+    try:
+        # Verify user can create shared sessions
+        member = await db.team_members.find_one({
+            "team_id": conversation_data.team_id,
+            "user_id": conversation_data.creator_id,
+            "status": "active"
+        })
+        
+        if not member or not member["permissions"]["can_create_shared_sessions"]:
+            raise HTTPException(status_code=403, detail="No permission to create shared sessions")
+        
+        shared_conv = SharedConversation(**conversation_data.dict())
+        shared_conv.participants = [conversation_data.creator_id]  # Creator is initial participant
+        
+        await db.shared_conversations.insert_one(shared_conv.dict())
+        
+        # Log activity
+        activity = TeamActivity(
+            team_id=conversation_data.team_id,
+            user_id=conversation_data.creator_id,
+            activity_type="shared_conversation_created",
+            description=f"Created shared conversation '{shared_conv.title}'",
+            metadata={"conversation_title": shared_conv.title, "session_id": shared_conv.session_id}
+        )
+        await db.team_activities.insert_one(activity.dict())
+        
+        return shared_conv
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Create shared conversation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create shared conversation")
+
+@api_router.get("/teams/{team_id}/activities", response_model=List[TeamActivity])
+async def get_team_activities(team_id: str, user_id: str, limit: int = 50):
+    """Get team activity feed"""
+    try:
+        # Verify user is team member
+        member = await db.team_members.find_one({
+            "team_id": team_id,
+            "user_id": user_id,
+            "status": "active"
+        })
+        
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a team member")
+        
+        activities = await db.team_activities.find(
+            {"team_id": team_id}
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+        
+        return [TeamActivity(**activity) for activity in activities]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get team activities error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve team activities")
+
+@api_router.get("/teams/{team_id}/analytics")
+async def get_team_analytics(team_id: str, user_id: str):
+    """Get team analytics and usage metrics"""
+    try:
+        # Verify user can view analytics
+        member = await db.team_members.find_one({
+            "team_id": team_id,
+            "user_id": user_id,
+            "status": "active"
+        })
+        
+        if not member or not member["permissions"]["can_view_analytics"]:
+            raise HTTPException(status_code=403, detail="No permission to view analytics")
+        
+        # Get team statistics
+        team_members_count = await db.team_members.count_documents({"team_id": team_id, "status": "active"})
+        shared_conversations_count = await db.shared_conversations.count_documents({"team_id": team_id})
+        
+        # Get recent activities count
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        recent_activities = await db.team_activities.count_documents({
+            "team_id": team_id,
+            "created_at": {"$gte": thirty_days_ago}
+        })
+        
+        # Get member roles breakdown
+        members = await db.team_members.find({"team_id": team_id, "status": "active"}).to_list(100)
+        role_breakdown = {}
+        for member in members:
+            role = member.get("role", "employee")
+            role_breakdown[role] = role_breakdown.get(role, 0) + 1
+        
+        analytics = {
+            "team_id": team_id,
+            "members_count": team_members_count,
+            "shared_conversations_count": shared_conversations_count,
+            "recent_activities_count": recent_activities,
+            "role_breakdown": role_breakdown,
+            "generated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        return analytics
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get team analytics error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve team analytics")
+
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
 async def register_user(user_data: UserCreate):
