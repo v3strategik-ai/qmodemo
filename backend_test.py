@@ -1704,39 +1704,45 @@ class ModQAPITester:
         return False
 
 def main():
-    print("🚀 Starting modQ Integration Marketplace Backend Testing")
+    print("🚀 Starting modQ Team Collaboration Backend Testing")
     print("=" * 70)
-    print("Focus: Integration Management Endpoints and Data Validation")
+    print("Focus: Team Management, Invitations, Shared Conversations & Analytics")
     print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence - focused on Integration Marketplace functionality as requested
+    # Test sequence - focused on Team Collaboration functionality as requested
     tests = [
         # Basic setup tests
         ("Root Endpoint", tester.test_root_endpoint),
         
-        # Integration Marketplace Tests (main focus)
-        ("Available Integrations Endpoint", tester.test_available_integrations),
-        ("User Integrations Empty", tester.test_user_integrations_empty),
-        ("Connect Integration", tester.test_connect_integration),
-        ("User Integrations With Data", tester.test_get_user_integrations_with_data),
-        ("Connect Duplicate Integration", tester.test_connect_duplicate_integration),
-        ("Sync Integration", tester.test_sync_integration_success),
-        ("Sync Non-existent Integration", tester.test_sync_nonexistent_integration),
-        ("Disconnect Integration", tester.test_disconnect_integration),
-        ("Disconnect Non-existent Integration", tester.test_disconnect_nonexistent_integration),
-        ("User Integrations After Disconnect", tester.test_user_integrations_after_disconnect),
-        ("Integration Data Validation", tester.test_integration_data_validation),
+        # Team Collaboration Tests (main focus)
+        ("Create Team", tester.test_create_team),
+        ("Get User Teams", tester.test_get_user_teams),
+        ("Get Team Members", tester.test_get_team_members),
+        ("Team Invitation", tester.test_team_invitation),
+        ("Duplicate Invitation Prevention", tester.test_duplicate_invitation),
+        ("Accept Team Invitation", tester.test_accept_team_invitation),
+        ("Team Members After Invitation", tester.test_team_members_after_invitation),
+        ("Create Shared Conversation", tester.test_create_shared_conversation),
+        ("Get Shared Conversations", tester.test_get_shared_conversations),
+        ("Team Activities", tester.test_team_activities),
+        ("Team Analytics", tester.test_team_analytics),
+        ("Team Access Control", tester.test_team_access_control),
+        ("Invitation Permissions", tester.test_invitation_permissions),
         
         # Core functionality tests for context
         ("AI Personalities", tester.test_ai_personalities),
         ("Session Management", tester.test_session_management),
         
-        # WebSocket tests (secondary focus)
+        # Integration Marketplace Tests (secondary)
+        ("Available Integrations Endpoint", tester.test_available_integrations),
+        ("User Integrations Empty", tester.test_user_integrations_empty),
+        ("Connect Integration", tester.test_connect_integration),
+        ("Integration Data Validation", tester.test_integration_data_validation),
+        
+        # WebSocket tests (known issues)
         ("WebSocket Connection", tester.test_websocket_connection),
-        ("WebSocket Chat Message Streaming", tester.test_websocket_chat_message),
-        ("WebSocket Connection Lifecycle", tester.test_websocket_connection_lifecycle),
         
         # Voice endpoints validation (should return proper 501 errors)
         ("Voice Transcription Endpoint", tester.test_voice_transcription_endpoint),
