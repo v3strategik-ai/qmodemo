@@ -838,13 +838,48 @@ async def handle_voice_transcription(message_data: Dict, user_id: str, session_i
         }, user_id, session_id)
 
 async def handle_tts_request(message_data: Dict, user_id: str, session_id: str):
-    """Handle text-to-speech requests - currently disabled due to API key incompatibility"""
+    """Handle text-to-speech requests using OpenAI TTS"""
     try:
+        # Get text and voice settings from message
+        text = message_data.get("text", "")
+        voice = message_data.get("voice", "alloy")
+        speed = message_data.get("speed", 1.0)
+        
+        if not text.strip():
+            await manager.send_message({
+                "type": "tts_error",
+                "message": "No text provided for speech synthesis",
+                "session_id": session_id
+            }, user_id, session_id)
+            return
+
+        # Initialize OpenAI client
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        
+        # Generate speech using OpenAI TTS
+        response = await client.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=text,
+            speed=speed
+        )
+        
+        # Convert audio to base64
+        audio_bytes = response.content
+        import base64
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+        
+        # Send TTS result
         await manager.send_message({
-            "type": "tts_error",
-            "message": "Text-to-speech temporarily disabled. OpenAI API key required for TTS integration.",
+            "type": "tts_success",
+            "audio_data": audio_base64,
+            "text": text,
+            "voice": voice,
             "session_id": session_id
         }, user_id, session_id)
+        
+        logging.info(f"TTS generation successful for user {user_id}")
         
     except Exception as e:
         logging.error(f"TTS error: {str(e)}")
