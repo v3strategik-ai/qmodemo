@@ -2339,6 +2339,39 @@ class ModQAPITester:
         
         return False
 
+    def test_session_management_for_workflow(self):
+        """Test conversation session management for workflow user"""
+        if not hasattr(self, 'workflow_test_user_id'):
+            print("❌ Skipping session management test - no workflow user ID available")
+            return False
+        
+        print(f"\n💬 Testing Session Management for workflow user: {self.workflow_test_user_id}")
+        
+        # Test creating new session
+        success1, session_response = self.run_test(
+            "Create New Session for Workflow User",
+            "POST",
+            f"sessions/new?user_id={self.workflow_test_user_id}",
+            200
+        )
+        
+        if success1 and session_response:
+            workflow_session_id = session_response.get('id')
+            print(f"   Created session ID: {workflow_session_id}")
+        
+        # Test getting user sessions
+        success2, sessions_response = self.run_test(
+            "Get Workflow User Sessions",
+            "GET",
+            f"sessions/{self.workflow_test_user_id}",
+            200
+        )
+        
+        if success2 and sessions_response:
+            print(f"   Found {len(sessions_response)} sessions for workflow user")
+        
+        return success1 and success2
+
     # ===== WORKFLOW BUILDER TESTS =====
     
     def test_user_registration_for_workflow(self):
