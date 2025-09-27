@@ -2964,30 +2964,38 @@ def main():
     
     failed_tests = []
     critical_failures = []
-    white_label_failures = []
+    workflow_failures = []
+    auth_failures = []
     
     for test_name, test_func in tests:
         try:
             success = test_func()
             if not success:
                 failed_tests.append(test_name)
-                # Mark White-Label Customization tests as critical
-                if any(keyword in test_name for keyword in ["Brand", "Theme", "Logo", "Domain", "White-Label", "Color", "Hierarchical"]):
+                # Mark Workflow Builder tests as critical
+                if any(keyword in test_name for keyword in ["Workflow", "Template", "Execute", "Metrics"]):
                     critical_failures.append(test_name)
-                    white_label_failures.append(test_name)
+                    workflow_failures.append(test_name)
+                # Mark Authentication tests as critical
+                elif any(keyword in test_name for keyword in ["Registration", "User"]):
+                    critical_failures.append(test_name)
+                    auth_failures.append(test_name)
                 # Mark WebSocket tests as important but not critical for this test
                 elif "WebSocket" in test_name:
-                    pass  # WebSocket failures are noted but not critical for white-label testing
+                    pass  # WebSocket failures are noted but not critical for workflow testing
         except Exception as e:
             print(f"❌ {test_name} failed with exception: {str(e)}")
             failed_tests.append(test_name)
-            if any(keyword in test_name for keyword in ["Brand", "Theme", "Logo", "Domain", "White-Label", "Color", "Hierarchical"]):
+            if any(keyword in test_name for keyword in ["Workflow", "Template", "Execute", "Metrics"]):
                 critical_failures.append(test_name)
-                white_label_failures.append(test_name)
+                workflow_failures.append(test_name)
+            elif any(keyword in test_name for keyword in ["Registration", "User"]):
+                critical_failures.append(test_name)
+                auth_failures.append(test_name)
     
     # Print final results
     print("\n" + "=" * 70)
-    print("📊 WHITE-LABEL CUSTOMIZATION TEST RESULTS")
+    print("📊 WORKFLOW BUILDER BACKEND TEST RESULTS")
     print("=" * 70)
     print(f"Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
@@ -3000,24 +3008,36 @@ def main():
             print(f"   - {test}")
     
     if critical_failures:
-        print(f"\n🚨 CRITICAL WHITE-LABEL CUSTOMIZATION FAILURES:")
+        print(f"\n🚨 CRITICAL WORKFLOW BUILDER FAILURES:")
         for test in critical_failures:
             print(f"   - {test}")
     
     if not failed_tests:
         print(f"\n✅ All tests passed!")
     
-    # White-Label Customization-specific summary
-    white_label_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Brand", "Theme", "Logo", "Domain", "White-Label", "Color", "Hierarchical"])]
-    white_label_passed = sum(1 for test in white_label_tests if test not in failed_tests)
+    # Authentication Flow summary
+    auth_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Registration", "User"])]
+    auth_passed = sum(1 for test in auth_tests if test not in failed_tests)
     
-    print(f"\n🎨 White-Label Customization Summary:")
-    print(f"   White-Label Tests Passed: {white_label_passed}/{len(white_label_tests)}")
+    print(f"\n🔐 Authentication Flow Summary:")
+    print(f"   Authentication Tests Passed: {auth_passed}/{len(auth_tests)}")
     
-    if white_label_passed == len(white_label_tests):
-        print(f"   ✅ White-Label Customization functionality is working correctly!")
+    if auth_passed == len(auth_tests):
+        print(f"   ✅ Authentication functionality is working correctly!")
     else:
-        print(f"   ❌ White-Label Customization functionality has issues that need attention")
+        print(f"   ❌ Authentication functionality has issues that need attention")
+    
+    # Workflow Builder-specific summary
+    workflow_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Workflow", "Template", "Execute", "Metrics"])]
+    workflow_passed = sum(1 for test in workflow_tests if test not in failed_tests)
+    
+    print(f"\n⚙️ Workflow Builder Backend Summary:")
+    print(f"   Workflow Tests Passed: {workflow_passed}/{len(workflow_tests)}")
+    
+    if workflow_passed == len(workflow_tests):
+        print(f"   ✅ Workflow Builder backend functionality is working correctly!")
+    else:
+        print(f"   ❌ Workflow Builder backend functionality has issues that need attention")
     
     # Core functionality summary (secondary)
     core_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["AI Personalities", "Session Management", "Root Endpoint"])]
@@ -3055,7 +3075,7 @@ def main():
     else:
         print(f"   ❌ Voice endpoints not returning proper error responses")
     
-    return 0 if len(white_label_failures) == 0 else 1
+    return 0 if len(workflow_failures) == 0 and len(auth_failures) == 0 else 1
 
 if __name__ == "__main__":
     sys.exit(main())
