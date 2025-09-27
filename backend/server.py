@@ -217,6 +217,99 @@ class IntegrationDisconnect(BaseModel):
     user_id: str
     integration_id: str
 
+# Team Collaboration Models
+class Team(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    owner_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    settings: Dict[str, Any] = {
+        "ai_personality": "Professional Assistant",
+        "shared_knowledge_base": True,
+        "shared_integrations": True,
+        "collaboration_level": "full"  # full, limited, view_only
+    }
+    is_active: bool = True
+
+class TeamMember(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    team_id: str
+    user_id: str
+    role: str = "employee"  # owner, admin, manager, employee
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_active: Optional[datetime] = None
+    permissions: Dict[str, bool] = {
+        "can_invite_members": False,
+        "can_manage_integrations": False,
+        "can_edit_team_settings": False,
+        "can_view_analytics": True,
+        "can_create_shared_sessions": True,
+        "can_access_all_conversations": False
+    }
+    status: str = "active"  # active, inactive, pending
+
+class TeamInvitation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    team_id: str
+    inviter_id: str
+    email: str
+    role: str = "employee"
+    status: str = "pending"  # pending, accepted, expired, cancelled
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=7))
+    accepted_at: Optional[datetime] = None
+
+class SharedConversation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    team_id: str
+    session_id: str
+    title: str = "Shared Team Conversation"
+    creator_id: str
+    participants: List[str] = []  # user_ids
+    is_public: bool = True  # visible to all team members
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TeamActivity(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    team_id: str
+    user_id: str
+    activity_type: str  # conversation_created, member_joined, integration_connected, etc.
+    description: str
+    metadata: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Team Management Request Models
+class TeamCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    owner_id: str
+
+class TeamUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    settings: Optional[Dict[str, Any]] = None
+
+class TeamInviteRequest(BaseModel):
+    team_id: str
+    email: str
+    role: str = "employee"
+    inviter_id: str
+
+class TeamMemberUpdate(BaseModel):
+    role: Optional[str] = None
+    permissions: Optional[Dict[str, bool]] = None
+    status: Optional[str] = None
+
+class SharedConversationCreate(BaseModel):
+    team_id: str
+    session_id: str
+    title: Optional[str] = "Shared Team Conversation"
+    creator_id: str
+    is_public: bool = True
+
 # WebSocket Connection Manager
 class ConnectionManager:
     def __init__(self):
