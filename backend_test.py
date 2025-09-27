@@ -1751,30 +1751,30 @@ def main():
     
     failed_tests = []
     critical_failures = []
-    integration_failures = []
+    team_failures = []
     
     for test_name, test_func in tests:
         try:
             success = test_func()
             if not success:
                 failed_tests.append(test_name)
-                # Mark Integration tests as critical
-                if any(keyword in test_name for keyword in ["Integration", "Connect", "Disconnect", "Sync", "Available"]):
+                # Mark Team Collaboration tests as critical
+                if any(keyword in test_name for keyword in ["Team", "Invitation", "Shared", "Analytics", "Access Control"]):
                     critical_failures.append(test_name)
-                    integration_failures.append(test_name)
+                    team_failures.append(test_name)
                 # Mark WebSocket tests as important but not critical for this test
                 elif "WebSocket" in test_name:
-                    pass  # WebSocket failures are noted but not critical for integration testing
+                    pass  # WebSocket failures are noted but not critical for team testing
         except Exception as e:
             print(f"❌ {test_name} failed with exception: {str(e)}")
             failed_tests.append(test_name)
-            if any(keyword in test_name for keyword in ["Integration", "Connect", "Disconnect", "Sync", "Available"]):
+            if any(keyword in test_name for keyword in ["Team", "Invitation", "Shared", "Analytics", "Access Control"]):
                 critical_failures.append(test_name)
-                integration_failures.append(test_name)
+                team_failures.append(test_name)
     
     # Print final results
     print("\n" + "=" * 70)
-    print("📊 INTEGRATION MARKETPLACE TEST RESULTS")
+    print("📊 TEAM COLLABORATION TEST RESULTS")
     print("=" * 70)
     print(f"Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
@@ -1787,30 +1787,42 @@ def main():
             print(f"   - {test}")
     
     if critical_failures:
-        print(f"\n🚨 CRITICAL INTEGRATION FAILURES:")
+        print(f"\n🚨 CRITICAL TEAM COLLABORATION FAILURES:")
         for test in critical_failures:
             print(f"   - {test}")
     
     if not failed_tests:
         print(f"\n✅ All tests passed!")
     
-    # Integration-specific summary
+    # Team Collaboration-specific summary
+    team_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Team", "Invitation", "Shared", "Analytics", "Access Control"])]
+    team_passed = sum(1 for test in team_tests if test not in failed_tests)
+    
+    print(f"\n👥 Team Collaboration Summary:")
+    print(f"   Team Tests Passed: {team_passed}/{len(team_tests)}")
+    
+    if team_passed == len(team_tests):
+        print(f"   ✅ Team Collaboration functionality is working correctly!")
+    else:
+        print(f"   ❌ Team Collaboration functionality has issues that need attention")
+    
+    # Integration summary (secondary)
     integration_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Integration", "Connect", "Disconnect", "Sync", "Available"])]
     integration_passed = sum(1 for test in integration_tests if test not in failed_tests)
     
-    print(f"\n🏪 Integration Marketplace Summary:")
+    print(f"\n🏪 Integration Marketplace Summary (Secondary):")
     print(f"   Integration Tests Passed: {integration_passed}/{len(integration_tests)}")
     
     if integration_passed == len(integration_tests):
         print(f"   ✅ Integration Marketplace functionality is working correctly!")
     else:
-        print(f"   ❌ Integration Marketplace functionality has issues that need attention")
+        print(f"   ❌ Integration Marketplace functionality has issues")
     
-    # WebSocket summary (secondary)
+    # WebSocket summary (known issues)
     websocket_tests = [test for test in [t[0] for t in tests] if "WebSocket" in test]
     websocket_passed = sum(1 for test in websocket_tests if test not in failed_tests)
     
-    print(f"\n🔌 WebSocket Functionality Summary (Secondary):")
+    print(f"\n🔌 WebSocket Functionality Summary (Known Issues):")
     print(f"   WebSocket Tests Passed: {websocket_passed}/{len(websocket_tests)}")
     
     if websocket_passed == len(websocket_tests):
@@ -1830,7 +1842,7 @@ def main():
     else:
         print(f"   ❌ Voice endpoints not returning proper error responses")
     
-    return 0 if len(integration_failures) == 0 else 1
+    return 0 if len(team_failures) == 0 else 1
 
 if __name__ == "__main__":
     sys.exit(main())
