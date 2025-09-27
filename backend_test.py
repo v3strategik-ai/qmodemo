@@ -3341,83 +3341,75 @@ class ModQAPITester:
         return False
 
 def main():
-    print("🚀 Starting modQ Workflow Builder Backend Testing")
+    print("🚀 Starting modQ Voice Features Backend Testing")
     print("=" * 70)
-    print("Focus: Workflow Builder API Endpoints, Authentication & Backend Integration")
+    print("Focus: Voice API Endpoints & OpenAI Integration Verification")
     print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence - focused on Workflow Builder functionality as requested
+    # Test sequence - focused on Voice Features as requested
     tests = [
         # Basic setup tests
         ("Root Endpoint", tester.test_root_endpoint),
         
-        # Authentication Flow Testing (as requested)
-        ("User Registration for Workflow Testing", tester.test_user_registration_for_workflow),
+        # OpenAI API Key Validation (critical)
+        ("OpenAI API Key Validation", tester.test_openai_api_key_validation),
         
-        # Workflow Backend Endpoints Testing (main focus)
-        ("Get Workflow Templates", tester.test_workflow_templates),
-        ("Create Workflow", tester.test_create_workflow),
-        ("Create Workflow from Template", tester.test_create_workflow_from_template),
-        ("Get User Workflows", tester.test_get_user_workflows),
-        ("Get Workflow by ID", tester.test_get_workflow_by_id),
-        ("Update Workflow", tester.test_update_workflow),
-        ("Execute Workflow", tester.test_execute_workflow),
-        ("Get Workflow Executions", tester.test_get_workflow_executions),
-        ("Get Workflow Metrics", tester.test_get_workflow_metrics),
-        ("Delete Workflow", tester.test_delete_workflow),
-        
-        # Backend Integration Tests (as requested)
-        ("Workflow Validation", tester.test_workflow_validation),
-        ("Workflow AI Integration Simulation", tester.test_workflow_integration_simulation),
-        
-        # Core functionality tests for context
-        ("AI Personalities", tester.test_ai_personalities),
-        ("Session Management", tester.test_session_management_for_workflow),
-        
-        # WebSocket tests (known issues)
-        ("WebSocket Connection", tester.test_websocket_connection),
-        
-        # Voice endpoints validation (should return proper 501 errors)
+        # Voice API Endpoints Testing (main focus)
         ("Voice Transcription Endpoint", tester.test_voice_transcription_endpoint),
         ("Voice Synthesis Endpoint", tester.test_voice_synthesis_endpoint),
+        ("Voice Synthesis Different Voices", tester.test_voice_synthesis_different_voices),
+        
+        # Error Handling Tests
+        ("Voice Error Handling", tester.test_voice_error_handling),
+        
+        # WebSocket Voice Integration
+        ("WebSocket Voice Integration", tester.test_websocket_voice_integration),
+        
+        # Supporting functionality tests
+        ("User Registration", tester.test_user_registration),
+        ("AI Personalities", tester.test_ai_personalities),
+        ("Session Management", tester.test_session_management),
+        
+        # WebSocket connection test (infrastructure)
+        ("WebSocket Connection", tester.test_websocket_connection),
     ]
     
     failed_tests = []
     critical_failures = []
-    workflow_failures = []
-    auth_failures = []
+    voice_failures = []
+    openai_failures = []
     
     for test_name, test_func in tests:
         try:
             success = test_func()
             if not success:
                 failed_tests.append(test_name)
-                # Mark Workflow Builder tests as critical
-                if any(keyword in test_name for keyword in ["Workflow", "Template", "Execute", "Metrics"]):
+                # Mark Voice tests as critical
+                if any(keyword in test_name for keyword in ["Voice", "TTS", "Transcription"]):
                     critical_failures.append(test_name)
-                    workflow_failures.append(test_name)
-                # Mark Authentication tests as critical
-                elif any(keyword in test_name for keyword in ["Registration", "User"]):
+                    voice_failures.append(test_name)
+                # Mark OpenAI API key tests as critical
+                elif "OpenAI" in test_name:
                     critical_failures.append(test_name)
-                    auth_failures.append(test_name)
-                # Mark WebSocket tests as important but not critical for this test
-                elif "WebSocket" in test_name:
-                    pass  # WebSocket failures are noted but not critical for workflow testing
+                    openai_failures.append(test_name)
+                # Mark WebSocket tests as important but not critical for voice testing
+                elif "WebSocket" in test_name and "Voice" not in test_name:
+                    pass  # WebSocket failures are noted but not critical for voice testing
         except Exception as e:
             print(f"❌ {test_name} failed with exception: {str(e)}")
             failed_tests.append(test_name)
-            if any(keyword in test_name for keyword in ["Workflow", "Template", "Execute", "Metrics"]):
+            if any(keyword in test_name for keyword in ["Voice", "TTS", "Transcription"]):
                 critical_failures.append(test_name)
-                workflow_failures.append(test_name)
-            elif any(keyword in test_name for keyword in ["Registration", "User"]):
+                voice_failures.append(test_name)
+            elif "OpenAI" in test_name:
                 critical_failures.append(test_name)
-                auth_failures.append(test_name)
+                openai_failures.append(test_name)
     
     # Print final results
     print("\n" + "=" * 70)
-    print("📊 WORKFLOW BUILDER BACKEND TEST RESULTS")
+    print("📊 VOICE FEATURES BACKEND TEST RESULTS")
     print("=" * 70)
     print(f"Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
@@ -3430,74 +3422,77 @@ def main():
             print(f"   - {test}")
     
     if critical_failures:
-        print(f"\n🚨 CRITICAL WORKFLOW BUILDER FAILURES:")
+        print(f"\n🚨 CRITICAL VOICE FEATURES FAILURES:")
         for test in critical_failures:
             print(f"   - {test}")
     
     if not failed_tests:
         print(f"\n✅ All tests passed!")
     
-    # Authentication Flow summary
-    auth_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Registration", "User"])]
-    auth_passed = sum(1 for test in auth_tests if test not in failed_tests)
+    # OpenAI API Key summary
+    openai_tests = [test for test in [t[0] for t in tests] if "OpenAI" in test]
+    openai_passed = sum(1 for test in openai_tests if test not in failed_tests)
     
-    print(f"\n🔐 Authentication Flow Summary:")
-    print(f"   Authentication Tests Passed: {auth_passed}/{len(auth_tests)}")
+    print(f"\n🔑 OpenAI API Key Summary:")
+    print(f"   OpenAI Tests Passed: {openai_passed}/{len(openai_tests)}")
     
-    if auth_passed == len(auth_tests):
-        print(f"   ✅ Authentication functionality is working correctly!")
+    if openai_passed == len(openai_tests):
+        print(f"   ✅ OpenAI API key is working correctly!")
     else:
-        print(f"   ❌ Authentication functionality has issues that need attention")
+        print(f"   ❌ OpenAI API key has authentication issues")
     
-    # Workflow Builder-specific summary
-    workflow_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Workflow", "Template", "Execute", "Metrics"])]
-    workflow_passed = sum(1 for test in workflow_tests if test not in failed_tests)
+    # Voice Features-specific summary
+    voice_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["Voice", "TTS", "Transcription"])]
+    voice_passed = sum(1 for test in voice_tests if test not in failed_tests)
     
-    print(f"\n⚙️ Workflow Builder Backend Summary:")
-    print(f"   Workflow Tests Passed: {workflow_passed}/{len(workflow_tests)}")
+    print(f"\n🎤 Voice Features Backend Summary:")
+    print(f"   Voice Tests Passed: {voice_passed}/{len(voice_tests)}")
     
-    if workflow_passed == len(workflow_tests):
-        print(f"   ✅ Workflow Builder backend functionality is working correctly!")
+    if voice_passed == len(voice_tests):
+        print(f"   ✅ Voice Features backend functionality is working correctly!")
     else:
-        print(f"   ❌ Workflow Builder backend functionality has issues that need attention")
+        print(f"   ❌ Voice Features backend functionality has issues that need attention")
     
-    # Core functionality summary (secondary)
-    core_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["AI Personalities", "Session Management", "Root Endpoint"])]
-    core_passed = sum(1 for test in core_tests if test not in failed_tests)
+    # Supporting functionality summary
+    support_tests = [test for test in [t[0] for t in tests] if any(keyword in test for keyword in ["User Registration", "AI Personalities", "Session Management", "Root Endpoint"])]
+    support_passed = sum(1 for test in support_tests if test not in failed_tests)
     
-    print(f"\n🤖 Core Functionality Summary (Secondary):")
-    print(f"   Core Tests Passed: {core_passed}/{len(core_tests)}")
+    print(f"\n🤖 Supporting Functionality Summary:")
+    print(f"   Support Tests Passed: {support_passed}/{len(support_tests)}")
     
-    if core_passed == len(core_tests):
-        print(f"   ✅ Core functionality is working correctly!")
+    if support_passed == len(support_tests):
+        print(f"   ✅ Supporting functionality is working correctly!")
     else:
-        print(f"   ❌ Core functionality has issues")
+        print(f"   ❌ Supporting functionality has issues")
     
-    # WebSocket summary (known issues)
+    # WebSocket summary
     websocket_tests = [test for test in [t[0] for t in tests] if "WebSocket" in test]
     websocket_passed = sum(1 for test in websocket_tests if test not in failed_tests)
     
-    print(f"\n🔌 WebSocket Functionality Summary (Known Issues):")
+    print(f"\n🔌 WebSocket Functionality Summary:")
     print(f"   WebSocket Tests Passed: {websocket_passed}/{len(websocket_tests)}")
     
     if websocket_passed == len(websocket_tests):
         print(f"   ✅ WebSocket functionality is working correctly!")
     else:
-        print(f"   ❌ WebSocket functionality has issues (known infrastructure issue)")
+        print(f"   ❌ WebSocket functionality has issues (may be infrastructure related)")
     
-    # Voice endpoints summary
-    voice_tests = ["Voice Transcription Endpoint", "Voice Synthesis Endpoint"]
-    voice_passed = sum(1 for test in voice_tests if test not in failed_tests)
+    # Final assessment for Voice Features readiness
+    print(f"\n🎯 VOICE FEATURES PRODUCTION READINESS ASSESSMENT:")
     
-    print(f"\n🎤 Voice Endpoints Summary:")
-    print(f"   Voice Tests Passed: {voice_passed}/{len(voice_tests)}")
+    if len(openai_failures) == 0 and len(voice_failures) == 0:
+        print(f"   ✅ READY: Voice Features are ready for production use")
+        print(f"   ✅ OpenAI API key is working correctly")
+        print(f"   ✅ Voice transcription and TTS generation are functional")
+        print(f"   ✅ Both REST and WebSocket endpoints are properly implemented")
+    elif len(openai_failures) > 0:
+        print(f"   ❌ NOT READY: OpenAI API key authentication issues detected")
+        print(f"   🔧 Action Required: Verify OpenAI API key is valid and has proper permissions")
+    elif len(voice_failures) > 0:
+        print(f"   ❌ NOT READY: Voice functionality issues detected")
+        print(f"   🔧 Action Required: Fix voice endpoint implementations")
     
-    if voice_passed == len(voice_tests):
-        print(f"   ✅ Voice endpoints properly return 501 errors as expected")
-    else:
-        print(f"   ❌ Voice endpoints not returning proper error responses")
-    
-    return 0 if len(workflow_failures) == 0 and len(auth_failures) == 0 else 1
+    return 0 if len(voice_failures) == 0 and len(openai_failures) == 0 else 1
 
 if __name__ == "__main__":
     sys.exit(main())
