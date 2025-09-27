@@ -2919,33 +2919,36 @@ class ModQAPITester:
         return False
 
 def main():
-    print("🚀 Starting modQ White-Label Customization Backend Testing")
+    print("🚀 Starting modQ Workflow Builder Backend Testing")
     print("=" * 70)
-    print("Focus: Brand Customization, Theme Management, Logo Upload & White-Label Features")
+    print("Focus: Workflow Builder API Endpoints, Authentication & Backend Integration")
     print("=" * 70)
     
     tester = ModQAPITester()
     
-    # Test sequence - focused on White-Label Customization functionality as requested
+    # Test sequence - focused on Workflow Builder functionality as requested
     tests = [
         # Basic setup tests
         ("Root Endpoint", tester.test_root_endpoint),
         
-        # White-Label Customization Tests (main focus)
-        ("Get User Branding (System Defaults)", tester.test_get_user_branding_defaults),
-        ("Create Brand Customization", tester.test_create_brand_customization),
-        ("Update Brand Customization", tester.test_update_brand_customization),
-        ("Get Theme Presets", tester.test_theme_presets),
-        ("Logo Upload", tester.test_logo_upload),
-        ("Logo Upload Validation", tester.test_logo_upload_validation),
-        ("Create Custom Domain", tester.test_create_custom_domain),
-        ("Get User Domains", tester.test_get_user_domains),
-        ("Domain Validation", tester.test_domain_validation),
-        ("Create White-Label Configuration", tester.test_create_white_label_config),
-        ("Get White-Label Configuration", tester.test_get_white_label_config),
-        ("Color Format Validation", tester.test_color_format_validation),
-        ("Hierarchical Branding Logic", tester.test_hierarchical_branding),
-        ("White-Label Integration", tester.test_white_label_integration),
+        # Authentication Flow Testing (as requested)
+        ("User Registration for Workflow Testing", tester.test_user_registration_for_workflow),
+        
+        # Workflow Backend Endpoints Testing (main focus)
+        ("Get Workflow Templates", tester.test_workflow_templates),
+        ("Create Workflow", tester.test_create_workflow),
+        ("Create Workflow from Template", tester.test_create_workflow_from_template),
+        ("Get User Workflows", tester.test_get_user_workflows),
+        ("Get Workflow by ID", tester.test_get_workflow_by_id),
+        ("Update Workflow", tester.test_update_workflow),
+        ("Execute Workflow", tester.test_execute_workflow),
+        ("Get Workflow Executions", tester.test_get_workflow_executions),
+        ("Get Workflow Metrics", tester.test_get_workflow_metrics),
+        ("Delete Workflow", tester.test_delete_workflow),
+        
+        # Backend Integration Tests (as requested)
+        ("Workflow Validation", tester.test_workflow_validation),
+        ("Workflow AI Integration Simulation", tester.test_workflow_integration_simulation),
         
         # Core functionality tests for context
         ("AI Personalities", tester.test_ai_personalities),
