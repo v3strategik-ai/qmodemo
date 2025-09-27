@@ -1839,13 +1839,282 @@ async def get_user_white_label_config(user_id: str):
         raise HTTPException(status_code=500, detail="Failed to retrieve white-label configuration")
 
 # Workflow Builder routes
+def get_hardcoded_templates():
+    """Get hardcoded workflow templates"""
+    return [
+        {
+            "id": "lead-qualification-basic",
+            "name": "Lead Qualification Workflow",
+            "description": "Automatically qualify and score incoming leads based on predefined criteria",
+            "category": "lead_qualification",
+            "industry": "sales",
+            "use_case": "Qualify leads from website forms and route to appropriate sales team",
+            "complexity": "beginner",
+            "estimated_time": "5-10 minutes",
+            "tags": ["leads", "qualification", "scoring", "automation"],
+            "is_system_template": True,
+            "usage_count": 1250,
+            "rating": 4.8,
+            "nodes": [
+                {
+                    "id": "trigger-1",
+                    "type": "trigger",
+                    "name": "Form Submission",
+                    "description": "Triggers when a lead form is submitted",
+                    "position": {"x": 100, "y": 100},
+                    "configuration": {"form_id": "contact_form", "required_fields": ["email", "company"]}
+                },
+                {
+                    "id": "condition-1",
+                    "type": "condition",
+                    "name": "Check Company Size",
+                    "description": "Filter leads by company size",
+                    "position": {"x": 300, "y": 100},
+                    "configuration": {"field": "company_size", "operator": ">=", "value": 50}
+                },
+                {
+                    "id": "ai-1",
+                    "type": "ai_response",
+                    "name": "AI Lead Scoring",
+                    "description": "Use AI to score lead quality",
+                    "position": {"x": 500, "y": 100},
+                    "configuration": {"personality": "Sales Manager", "prompt": "Score this lead from 1-100 based on company size, industry, and title"}
+                },
+                {
+                    "id": "action-1",
+                    "type": "action",
+                    "name": "Route to Sales Team",
+                    "description": "Assign lead to appropriate sales representative",
+                    "position": {"x": 700, "y": 100},
+                    "configuration": {"action_type": "assign_lead", "team": "enterprise_sales"}
+                }
+            ],
+            "connections": [
+                {
+                    "id": "conn-1",
+                    "source_node_id": "trigger-1",
+                    "target_node_id": "condition-1",
+                    "source_port": "output",
+                    "target_port": "input"
+                },
+                {
+                    "id": "conn-2",
+                    "source_node_id": "condition-1",
+                    "target_node_id": "ai-1",
+                    "source_port": "true",
+                    "target_port": "input",
+                    "condition": "company_size >= 50"
+                },
+                {
+                    "id": "conn-3",
+                    "source_node_id": "ai-1",
+                    "target_node_id": "action-1",
+                    "source_port": "output",
+                    "target_port": "input"
+                }
+            ]
+        },
+        {
+            "id": "email-automation-nurture",
+            "name": "Email Nurture Campaign",
+            "description": "Automated email sequence for nurturing leads with personalized content",
+            "category": "email_automation",
+            "industry": "marketing",
+            "use_case": "Send targeted email sequences based on user behavior and engagement",
+            "complexity": "intermediate",
+            "estimated_time": "15-20 minutes",
+            "tags": ["email", "nurturing", "personalization", "engagement"],
+            "is_system_template": True,
+            "usage_count": 890,
+            "rating": 4.6,
+            "nodes": [
+                {
+                    "id": "trigger-2",
+                    "type": "trigger",
+                    "name": "User Registration",
+                    "description": "Triggers when user registers or signs up",
+                    "position": {"x": 100, "y": 200},
+                    "configuration": {"event": "user_registered", "delay_hours": 1}
+                },
+                {
+                    "id": "ai-2",
+                    "type": "ai_response",
+                    "name": "Personalize Content",
+                    "description": "Generate personalized email content",
+                    "position": {"x": 300, "y": 200},
+                    "configuration": {"personality": "Professional Assistant", "prompt": "Create a personalized welcome email based on user profile"}
+                },
+                {
+                    "id": "action-2",
+                    "type": "action",
+                    "name": "Send Welcome Email",
+                    "description": "Send personalized welcome email",
+                    "position": {"x": 500, "y": 200},
+                    "configuration": {"action_type": "send_email", "template": "welcome_email"}
+                },
+                {
+                    "id": "condition-2",
+                    "type": "condition",
+                    "name": "Check Engagement",
+                    "description": "Check if user opened the email",
+                    "position": {"x": 300, "y": 350},
+                    "configuration": {"field": "email_opened", "operator": "==", "value": true, "wait_days": 3}
+                },
+                {
+                    "id": "action-3",
+                    "type": "action",
+                    "name": "Send Follow-up",
+                    "description": "Send follow-up email for engaged users",
+                    "position": {"x": 500, "y": 300},
+                    "configuration": {"action_type": "send_email", "template": "followup_engaged"}
+                },
+                {
+                    "id": "action-4",
+                    "type": "action",
+                    "name": "Send Re-engagement",
+                    "description": "Send re-engagement email for non-engaged users",
+                    "position": {"x": 500, "y": 400},
+                    "configuration": {"action_type": "send_email", "template": "reengagement"}
+                }
+            ],
+            "connections": [
+                {
+                    "id": "conn-4",
+                    "source_node_id": "trigger-2",
+                    "target_node_id": "ai-2",
+                    "source_port": "output",
+                    "target_port": "input"
+                },
+                {
+                    "id": "conn-5",
+                    "source_node_id": "ai-2",
+                    "target_node_id": "action-2",
+                    "source_port": "output",
+                    "target_port": "input"
+                },
+                {
+                    "id": "conn-6",
+                    "source_node_id": "action-2",
+                    "target_node_id": "condition-2",
+                    "source_port": "output",
+                    "target_port": "input"
+                },
+                {
+                    "id": "conn-7",
+                    "source_node_id": "condition-2",
+                    "target_node_id": "action-3",
+                    "source_port": "true",
+                    "target_port": "input",
+                    "condition": "email_opened == true"
+                },
+                {
+                    "id": "conn-8",
+                    "source_node_id": "condition-2",
+                    "target_node_id": "action-4",
+                    "source_port": "false",
+                    "target_port": "input"
+                }
+            ]
+        },
+        {
+            "id": "task-management-assignment",
+            "name": "Smart Task Assignment",
+            "description": "Intelligently assign tasks to team members based on workload and skills",
+            "category": "task_management",
+            "industry": "operations",
+            "use_case": "Automatically distribute tasks based on team member availability and expertise",
+            "complexity": "intermediate",
+            "estimated_time": "10-15 minutes",
+            "tags": ["tasks", "assignment", "workload", "skills"],
+            "is_system_template": True,
+            "usage_count": 654,
+            "rating": 4.7,
+            "nodes": [
+                {
+                    "id": "trigger-3",
+                    "type": "trigger",
+                    "name": "New Task Created",
+                    "description": "Triggers when a new task is created",
+                    "position": {"x": 100, "y": 300},
+                    "configuration": {"event": "task_created", "source": "project_management"}
+                },
+                {
+                    "id": "ai-3",
+                    "type": "ai_response",
+                    "name": "Analyze Task Requirements",
+                    "description": "AI analysis of task complexity and required skills",
+                    "position": {"x": 300, "y": 300},
+                    "configuration": {"personality": "Strategic Advisor", "prompt": "Analyze task complexity, required skills, and estimated effort"}
+                },
+                {
+                    "id": "condition-3",
+                    "type": "condition",
+                    "name": "Check Team Availability",
+                    "description": "Check which team members are available",
+                    "position": {"x": 500, "y": 300},
+                    "configuration": {"field": "team_availability", "operator": ">", "value": 0}
+                },
+                {
+                    "id": "action-5",
+                    "type": "action",
+                    "name": "Assign to Best Match",
+                    "description": "Assign task to best matching team member",
+                    "position": {"x": 700, "y": 250},
+                    "configuration": {"action_type": "assign_task", "criteria": "skills_match"}
+                },
+                {
+                    "id": "action-6",
+                    "type": "action",
+                    "name": "Add to Queue",
+                    "description": "Add to queue if no one available",
+                    "position": {"x": 700, "y": 350},
+                    "configuration": {"action_type": "queue_task", "priority": "high"}
+                }
+            ],
+            "connections": [
+                {
+                    "id": "conn-9",
+                    "source_node_id": "trigger-3",
+                    "target_node_id": "ai-3",
+                    "source_port": "output",
+                    "target_port": "input"
+                },
+                {
+                    "id": "conn-10",
+                    "source_node_id": "ai-3",
+                    "target_node_id": "condition-3",
+                    "source_port": "output",
+                    "target_port": "input"
+                },
+                {
+                    "id": "conn-11",
+                    "source_node_id": "condition-3",
+                    "target_node_id": "action-5",
+                    "source_port": "true",
+                    "target_port": "input",
+                    "condition": "available_members > 0"
+                },
+                {
+                    "id": "conn-12",
+                    "source_node_id": "condition-3",
+                    "target_node_id": "action-6",
+                    "source_port": "false",
+                    "target_port": "input"
+                }
+            ]
+        }
+    ]
+
 @api_router.post("/workflows/create", response_model=Workflow)
 async def create_workflow(workflow_data: WorkflowCreate):
     """Create a new workflow"""
     try:
         # If template_id provided, load template and create from it
         if workflow_data.template_id:
-            template = await db.workflow_templates.find_one({"id": workflow_data.template_id})
+            # Get hardcoded templates
+            templates = get_hardcoded_templates()
+            template = next((t for t in templates if t["id"] == workflow_data.template_id), None)
+            
             if not template:
                 raise HTTPException(status_code=404, detail="Workflow template not found")
             
@@ -1855,12 +2124,6 @@ async def create_workflow(workflow_data: WorkflowCreate):
                 nodes=[WorkflowNode(**node) for node in template["nodes"]],
                 connections=[WorkflowConnection(**conn) for conn in template["connections"]],
                 template_id=workflow_data.template_id
-            )
-            
-            # Update template usage count
-            await db.workflow_templates.update_one(
-                {"id": workflow_data.template_id},
-                {"$inc": {"usage_count": 1}}
             )
         else:
             # Create empty workflow
