@@ -1034,6 +1034,11 @@ const WidgetDemo = () => {
               <TeamCollaboration currentUser={currentUser} />
             </TabsContent>
 
+            {/* Workflow Builder Tab */}
+            <TabsContent value="workflows" className="mt-6">
+              <WorkflowBuilder currentUser={currentUser} />
+            </TabsContent>
+
             {/* Integration Marketplace Tab */}
             <TabsContent value="integrations" className="mt-6">
               <IntegrationMarketplace currentUser={currentUser} />
