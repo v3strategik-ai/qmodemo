@@ -1362,6 +1362,349 @@ async def get_team_analytics(team_id: str, user_id: str):
         logging.error(f"Get team analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve team analytics")
 
+# White-Label Customization routes
+@api_router.post("/branding/create", response_model=BrandCustomization)
+async def create_brand_customization(brand_data: BrandCustomizationCreate):
+    """Create brand customization for user or team"""
+    try:
+        brand_customization = BrandCustomization(**brand_data.dict())
+        await db.brand_customizations.insert_one(brand_customization.dict())
+        
+        logging.info(f"Brand customization created for user {brand_data.user_id or 'system'}")
+        return brand_customization
+        
+    except Exception as e:
+        logging.error(f"Create brand customization error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create brand customization")
+
+@api_router.get("/branding/user/{user_id}", response_model=BrandCustomization)
+async def get_user_branding(user_id: str):
+    """Get brand customization for a user"""
+    try:
+        # First check for user-specific branding
+        branding = await db.brand_customizations.find_one({
+            "user_id": user_id,
+            "is_active": True
+        })
+        
+        if not branding:
+            # Check for team-specific branding
+            user_teams = await db.team_members.find({"user_id": user_id, "status": "active"}).to_list(10)
+            for membership in user_teams:
+                team_branding = await db.brand_customizations.find_one({
+                    "team_id": membership["team_id"],
+                    "is_active": True
+                })
+                if team_branding:
+                    branding = team_branding
+                    break
+        
+        if not branding:
+            # Return system default branding
+            branding = {
+                "id": "system-default",
+                "user_id": None,
+                "team_id": None,
+                "organization_name": "modQ",
+                "logo_url": None,
+                "favicon_url": None,
+                "primary_color": "#3b82f6",
+                "secondary_color": "#8b5cf6",
+                "accent_color": "#10b981",
+                "background_color": "#000000",
+                "text_color": "#ffffff",
+                "border_color": "#374151",
+                "theme_mode": "dark",
+                "custom_css": None,
+                "welcome_message": "Welcome to your AI-powered business intelligence platform",
+                "tagline": "Modular Quantum Business Intelligence",
+                "footer_text": "Powered by modQ",
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "is_active": True
+            }
+        
+        return BrandCustomization(**branding)
+        
+    except Exception as e:
+        logging.error(f"Get user branding error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve brand customization")
+
+@api_router.put("/branding/{branding_id}", response_model=BrandCustomization)
+async def update_brand_customization(branding_id: str, brand_updates: BrandCustomizationUpdate):
+    """Update brand customization"""
+    try:
+        # Get existing branding
+        existing_branding = await db.brand_customizations.find_one({"id": branding_id})
+        if not existing_branding:
+            raise HTTPException(status_code=404, detail="Brand customization not found")
+        
+        # Update fields
+        update_data = {k: v for k, v in brand_updates.dict().items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc)
+        
+        await db.brand_customizations.update_one(
+            {"id": branding_id},
+            {"$set": update_data}
+        )
+        
+        # Get updated branding
+        updated_branding = await db.brand_customizations.find_one({"id": branding_id})
+        
+        logging.info(f"Brand customization {branding_id} updated")
+        return BrandCustomization(**updated_branding)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Update brand customization error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update brand customization")
+
+@api_router.post("/branding/upload-logo")
+async def upload_logo(file: UploadFile = File(...), user_id: str = "", branding_id: str = ""):
+    """Upload logo for brand customization"""
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Check file size (max 5MB)
+        file_size = 0
+        content = await file.read()
+        file_size = len(content)
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+        
+        # Save file (in production, this would upload to cloud storage)
+        import hashlib
+        file_hash = hashlib.md5(content).hexdigest()
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'png'
+        filename = f"logo_{user_id}_{file_hash}.{file_extension}"
+        
+        # Create uploads directory if it doesn't exist
+        upload_dir = Path("/tmp/uploads")
+        upload_dir.mkdir(exist_ok=True)
+        
+        file_path = upload_dir / filename
+        
+        async with aiofiles.open(file_path, 'wb') as f:
+            await f.write(content)
+        
+        # Generate URL (in production, this would be a CDN URL)
+        logo_url = f"/uploads/{filename}"
+        
+        # Update branding if branding_id provided
+        if branding_id:
+            await db.brand_customizations.update_one(
+                {"id": branding_id},
+                {
+                    "$set": {
+                        "logo_url": logo_url,
+                        "updated_at": datetime.now(timezone.utc)
+                    }
+                }
+            )
+        
+        logging.info(f"Logo uploaded for user {user_id}: {logo_url}")
+        
+        return LogoUploadResponse(
+            success=True,
+            logo_url=logo_url,
+            message="Logo uploaded successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Logo upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upload logo")
+
+@api_router.get("/themes/presets")
+async def get_theme_presets():
+    """Get available theme presets"""
+    try:
+        # System theme presets
+        presets = [
+            {
+                "id": "modq-dark",
+                "name": "modQ Dark",
+                "description": "Default dark theme with blue and purple accents",
+                "primary_color": "#3b82f6",
+                "secondary_color": "#8b5cf6",
+                "accent_color": "#10b981",
+                "background_color": "#000000",
+                "text_color": "#ffffff",
+                "border_color": "#374151",
+                "theme_mode": "dark",
+                "preview_image": "/themes/modq-dark-preview.png",
+                "is_system_preset": True
+            },
+            {
+                "id": "modq-light",
+                "name": "modQ Light",
+                "description": "Clean light theme for bright environments",
+                "primary_color": "#2563eb",
+                "secondary_color": "#7c3aed",
+                "accent_color": "#059669",
+                "background_color": "#ffffff",
+                "text_color": "#111827",
+                "border_color": "#e5e7eb",
+                "theme_mode": "light",
+                "preview_image": "/themes/modq-light-preview.png",
+                "is_system_preset": True
+            },
+            {
+                "id": "corporate-blue",
+                "name": "Corporate Blue",
+                "description": "Professional blue theme for corporate environments",
+                "primary_color": "#1e40af",
+                "secondary_color": "#3b82f6",
+                "accent_color": "#0ea5e9",
+                "background_color": "#0f172a",
+                "text_color": "#f8fafc",
+                "border_color": "#334155",
+                "theme_mode": "dark",
+                "preview_image": "/themes/corporate-blue-preview.png",
+                "is_system_preset": True
+            },
+            {
+                "id": "emerald-professional",
+                "name": "Emerald Professional",
+                "description": "Sophisticated green theme for modern businesses",
+                "primary_color": "#059669",
+                "secondary_color": "#10b981",
+                "accent_color": "#34d399",
+                "background_color": "#064e3b",
+                "text_color": "#ecfdf5",
+                "border_color": "#065f46",
+                "theme_mode": "dark",
+                "preview_image": "/themes/emerald-professional-preview.png",
+                "is_system_preset": True
+            },
+            {
+                "id": "sunset-orange",
+                "name": "Sunset Orange",
+                "description": "Warm orange theme for creative teams",
+                "primary_color": "#ea580c",
+                "secondary_color": "#f97316",
+                "accent_color": "#fb923c",
+                "background_color": "#7c2d12",
+                "text_color": "#fff7ed",
+                "border_color": "#9a3412",
+                "theme_mode": "dark",
+                "preview_image": "/themes/sunset-orange-preview.png",
+                "is_system_preset": True
+            },
+            {
+                "id": "royal-purple",
+                "name": "Royal Purple",
+                "description": "Elegant purple theme for premium brands",
+                "primary_color": "#7c3aed",
+                "secondary_color": "#8b5cf6",
+                "accent_color": "#a78bfa",
+                "background_color": "#3c1361",
+                "text_color": "#faf5ff",
+                "border_color": "#581c87",
+                "theme_mode": "dark",
+                "preview_image": "/themes/royal-purple-preview.png",
+                "is_system_preset": True
+            }
+        ]
+        
+        # Get custom presets from database
+        custom_presets = await db.theme_presets.find({"is_system_preset": False}).to_list(50)
+        
+        all_presets = presets + [ThemePreset(**preset).dict() for preset in custom_presets]
+        
+        return {"presets": all_presets}
+        
+    except Exception as e:
+        logging.error(f"Get theme presets error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve theme presets")
+
+@api_router.post("/domains/create", response_model=CustomDomain)
+async def create_custom_domain(domain_data: CustomDomainCreate):
+    """Create custom domain configuration"""
+    try:
+        # Validate domain name format
+        import re
+        domain_pattern = r'^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$'
+        
+        if not re.match(domain_pattern, domain_data.domain_name):
+            raise HTTPException(status_code=400, detail="Invalid domain name format")
+        
+        # Check if domain already exists
+        existing_domain = await db.custom_domains.find_one({"domain_name": domain_data.domain_name})
+        if existing_domain:
+            raise HTTPException(status_code=409, detail="Domain already configured")
+        
+        custom_domain = CustomDomain(**domain_data.dict())
+        await db.custom_domains.insert_one(custom_domain.dict())
+        
+        logging.info(f"Custom domain created: {domain_data.domain_name} for user {domain_data.user_id}")
+        return custom_domain
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Create custom domain error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create custom domain")
+
+@api_router.get("/domains/user/{user_id}", response_model=List[CustomDomain])
+async def get_user_domains(user_id: str):
+    """Get custom domains for a user"""
+    try:
+        domains = await db.custom_domains.find({"user_id": user_id}).to_list(50)
+        return [CustomDomain(**domain) for domain in domains]
+        
+    except Exception as e:
+        logging.error(f"Get user domains error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve user domains")
+
+@api_router.post("/white-label/create", response_model=WhiteLabelConfig)
+async def create_white_label_config(config_data: WhiteLabelConfigCreate):
+    """Create white-label configuration"""
+    try:
+        # Create brand customization first
+        brand_data = BrandCustomizationCreate(
+            user_id=config_data.user_id,
+            organization_name=config_data.organization_name
+        )
+        brand_response = await create_brand_customization(brand_data)
+        
+        # Create white-label config
+        white_label_config = WhiteLabelConfig(
+            **config_data.dict(),
+            brand_customization_id=brand_response.id
+        )
+        
+        await db.white_label_configs.insert_one(white_label_config.dict())
+        
+        logging.info(f"White-label config created for user {config_data.user_id}")
+        return white_label_config
+        
+    except Exception as e:
+        logging.error(f"Create white-label config error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create white-label configuration")
+
+@api_router.get("/white-label/user/{user_id}", response_model=WhiteLabelConfig)
+async def get_user_white_label_config(user_id: str):
+    """Get white-label configuration for a user"""
+    try:
+        config = await db.white_label_configs.find_one({"user_id": user_id})
+        
+        if not config:
+            raise HTTPException(status_code=404, detail="White-label configuration not found")
+        
+        return WhiteLabelConfig(**config)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get white-label config error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve white-label configuration")
+
 # Auth routes
 @api_router.post("/auth/register", response_model=User)
 async def register_user(user_data: UserCreate):
