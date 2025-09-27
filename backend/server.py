@@ -1666,10 +1666,15 @@ async def get_user_domains(user_id: str):
 async def create_white_label_config(config_data: WhiteLabelConfigCreate):
     """Create white-label configuration"""
     try:
-        # Create brand customization first
+        # Create brand customization first with proper defaults
         brand_data = BrandCustomizationCreate(
             user_id=config_data.user_id,
-            organization_name=config_data.organization_name
+            organization_name=config_data.organization_name,
+            primary_color="#3b82f6",  # Default blue
+            secondary_color="#8b5cf6",  # Default purple
+            accent_color="#10b981",  # Default green
+            welcome_message="Welcome to your AI-powered business intelligence platform",
+            tagline="Modular Quantum Business Intelligence"
         )
         brand_response = await create_brand_customization(brand_data)
         
