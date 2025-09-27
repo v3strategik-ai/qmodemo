@@ -23,6 +23,7 @@ import ExportCapabilities from './ExportCapabilities';
 import AchievementSystem from './AchievementSystem';
 import VoiceInterface from './VoiceInterface';
 import IntegrationMarketplace from './IntegrationMarketplace';
+import TeamCollaboration from './TeamCollaboration';
 import useWebSocket from '../hooks/useWebSocket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
