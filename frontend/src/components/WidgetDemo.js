@@ -649,6 +649,10 @@ const WidgetDemo = () => {
                 <Users className="w-4 h-4" />
                 Teams
               </TabsTrigger>
+              <TabsTrigger value="workflows" className="flex items-center gap-2">
+                <Workflow className="w-4 h-4" />
+                Workflows
+              </TabsTrigger>
               <TabsTrigger value="integrations" className="flex items-center gap-2">
                 <Zap className="w-4 h-4" />
                 Integrations
