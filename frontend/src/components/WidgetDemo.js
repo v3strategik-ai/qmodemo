@@ -1019,6 +1019,11 @@ const WidgetDemo = () => {
               </div>
             </TabsContent>
 
+            {/* Team Collaboration Tab */}
+            <TabsContent value="teams" className="mt-6">
+              <TeamCollaboration currentUser={currentUser} />
+            </TabsContent>
+
             {/* Integration Marketplace Tab */}
             <TabsContent value="integrations" className="mt-6">
               <IntegrationMarketplace currentUser={currentUser} />
