@@ -825,7 +825,6 @@ async def handle_voice_transcription(message_data: Dict, user_id: str, session_i
             
         finally:
             # Clean up temp file
-            import os
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
         
