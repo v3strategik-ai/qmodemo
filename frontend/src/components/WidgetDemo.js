@@ -645,6 +645,10 @@ const WidgetDemo = () => {
                 <Users className="w-4 h-4" />
                 Sessions
               </TabsTrigger>
+              <TabsTrigger value="voice" className="flex items-center gap-2">
+                <Mic className="w-4 h-4" />
+                Voice
+              </TabsTrigger>
               <TabsTrigger value="teams" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Teams
