@@ -2587,8 +2587,8 @@ class ModQAPITester:
 
     def test_update_workflow(self):
         """Test PUT /api/workflows/{workflow_id} to update workflow"""
-        if not hasattr(self, 'test_workflow_id'):
-            print("❌ Skipping update workflow test - no workflow ID available")
+        if not hasattr(self, 'test_workflow_id') or not hasattr(self, 'workflow_test_user_id'):
+            print("❌ Skipping update workflow test - missing IDs")
             return False
         
         print(f"\n✏️ Testing Update Workflow: {self.test_workflow_id}")
@@ -2645,7 +2645,7 @@ class ModQAPITester:
         success, response = self.run_test(
             "Update Workflow",
             "PUT",
-            f"workflows/{self.test_workflow_id}",
+            f"workflows/{self.test_workflow_id}?user_id={self.workflow_test_user_id}",
             200,
             data=update_data
         )
