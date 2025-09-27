@@ -779,13 +779,55 @@ async def handle_streaming_chat(message_data: Dict, user_id: str, session_id: st
         }, user_id, session_id)
 
 async def handle_voice_transcription(message_data: Dict, user_id: str, session_id: str):
-    """Handle voice transcription - currently disabled due to API key incompatibility"""
+    """Handle voice transcription using OpenAI Whisper"""
     try:
-        await manager.send_message({
-            "type": "transcription_error",
-            "message": "Voice transcription temporarily disabled. OpenAI API key required for Whisper integration.",
-            "session_id": session_id
-        }, user_id, session_id)
+        # Get audio data from message
+        audio_data = message_data.get("audio_data")
+        if not audio_data:
+            await manager.send_message({
+                "type": "transcription_error",
+                "message": "No audio data provided",
+                "session_id": session_id
+            }, user_id, session_id)
+            return
+
+        # Initialize OpenAI client
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        
+        # Convert base64 audio to bytes
+        import base64
+        audio_bytes = base64.b64decode(audio_data)
+        
+        # Create a temporary file for the audio
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
+            temp_file.write(audio_bytes)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Transcribe audio using OpenAI Whisper
+            with open(temp_file_path, 'rb') as audio_file:
+                transcript = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text"
+                )
+            
+            # Send transcription result
+            await manager.send_message({
+                "type": "transcription_success",
+                "transcript": transcript,
+                "session_id": session_id
+            }, user_id, session_id)
+            
+            logging.info(f"Voice transcription successful for user {user_id}")
+            
+        finally:
+            # Clean up temp file
+            import os
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
         
     except Exception as e:
         logging.error(f"Voice transcription error: {str(e)}")
