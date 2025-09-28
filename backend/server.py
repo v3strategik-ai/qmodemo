@@ -3526,24 +3526,6 @@ async def get_workflow_metrics(workflow_id: str, user_id: str):
         logging.error(f"Get workflow metrics error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve workflow metrics")
 
-# Auth routes
-@api_router.post("/auth/register", response_model=User)
-async def register_user(user_data: UserCreate):
-    # Check if user exists
-    existing_user = await db.users.find_one({"email": user_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exists")
-    
-    user_dict = user_data.dict()
-    user_obj = User(**user_dict)
-    await db.users.insert_one(user_obj.dict())
-    return user_obj
-
-@api_router.get("/auth/users", response_model=List[User])
-async def get_users():
-    users = await db.users.find().to_list(100)
-    return [User(**user) for user in users]
-
 # Widget Configuration routes
 @api_router.post("/widget/config", response_model=WidgetConfig)
 async def create_widget_config(config_data: WidgetConfigCreate):
