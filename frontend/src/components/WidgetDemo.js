@@ -743,6 +743,12 @@ const WidgetDemo = () => {
                 <Workflow className="w-4 h-4" />
                 Workflows
               </TabsTrigger>
+
+              <TabsTrigger value="beta-testing" className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Beta Testing
+                <Badge variant="outline" className="text-xs ml-1">New</Badge>
+              </TabsTrigger>
               <TabsTrigger value="ai-agents" className="flex items-center gap-2">
                 <Bot className="w-4 h-4" />
                 AI Agents
