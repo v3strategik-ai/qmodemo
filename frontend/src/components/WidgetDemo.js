@@ -1061,6 +1061,11 @@ const WidgetDemo = () => {
               <WorkflowBuilder currentUser={currentUser} />
             </TabsContent>
 
+            {/* AI Agent Manager Tab */}
+            <TabsContent value="ai-agents" className="mt-6">
+              <AIAgentManager currentUser={currentUser} />
+            </TabsContent>
+
             {/* Integration Marketplace Tab */}
             <TabsContent value="integrations" className="mt-6">
               <IntegrationMarketplace currentUser={currentUser} />
