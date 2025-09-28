@@ -5273,6 +5273,488 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # F1: Performance - Startup optimization
+# =============================================
+# OPTION D: BETA TESTING OPTIMIZERS
+# =============================================
+
+# Beta Testing Models
+class UserRole(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    role_name: str  # CEO, Manager, Employee, Developer, Sales Rep, Customer Success, etc.
+    permissions: List[str] = []
+    ui_settings: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_active: bool = True
+
+class FeedbackEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    feature_name: str
+    feedback_type: str  # rating, comment, bug_report, suggestion
+    rating: Optional[int] = None  # 1-5 stars
+    comment: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: str = "open"  # open, reviewed, resolved
+
+class FeatureTour(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    tour_name: str
+    title: str
+    description: str
+    steps: List[Dict[str, Any]] = []
+    target_roles: List[str] = []
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserTourProgress(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    tour_id: str
+    current_step: int = 0
+    completed: bool = False
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[datetime] = None
+
+class UsageEvent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    event_type: str  # page_view, feature_click, time_spent, error, etc.
+    feature_name: str
+    metadata: Dict[str, Any] = {}
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    session_id: Optional[str] = None
+
+class BetaAnalytics(BaseModel):
+    total_users: int = 0
+    active_features: Dict[str, int] = {}
+    feedback_summary: Dict[str, Any] = {}
+    tour_completion_rates: Dict[str, float] = {}
+    usage_trends: List[Dict[str, Any]] = []
+
+# D1: "Try as [Role]" Quick Switcher
+@app.post("/api/beta/roles/switch")
+async def switch_user_role(role_data: dict):
+    """Switch user's current role for testing purposes"""
+    try:
+        user_id = role_data.get('user_id')
+        role_name = role_data.get('role_name')
+        
+        if not user_id or not role_name:
+            raise HTTPException(status_code=400, detail="user_id and role_name required")
+        
+        # Define role permissions and UI settings
+        role_configs = {
+            "CEO": {
+                "permissions": ["all_access", "admin", "analytics", "team_management"],
+                "ui_settings": {"show_executive_dashboard": True, "hide_technical_details": True}
+            },
+            "Manager": {
+                "permissions": ["team_view", "analytics", "workflow_management"],
+                "ui_settings": {"show_team_performance": True, "show_workflow_analytics": True}
+            },
+            "Employee": {
+                "permissions": ["basic_access", "chat", "voice"],
+                "ui_settings": {"show_simplified_ui": True, "focus_mode": True}
+            },
+            "Developer": {
+                "permissions": ["technical_access", "integrations", "api_docs"],
+                "ui_settings": {"show_debug_info": True, "show_api_logs": True}
+            },
+            "Sales Rep": {
+                "permissions": ["crm_access", "customer_data", "analytics"],
+                "ui_settings": {"show_sales_dashboard": True, "show_lead_tracking": True}
+            },
+            "Customer Success": {
+                "permissions": ["customer_support", "feedback_access", "analytics"],
+                "ui_settings": {"show_support_tools": True, "show_customer_health": True}
+            }
+        }
+        
+        role_config = role_configs.get(role_name, {
+            "permissions": ["basic_access"],
+            "ui_settings": {"default_view": True}
+        })
+        
+        # Create or update user role
+        user_role = UserRole(
+            user_id=user_id,
+            role_name=role_name,
+            permissions=role_config["permissions"],
+            ui_settings=role_config["ui_settings"]
+        )
+        
+        # Store in database
+        await db.user_roles.update_one(
+            {"user_id": user_id},
+            {"$set": user_role.dict()},
+            upsert=True
+        )
+        
+        return {"message": f"Switched to {role_name} role", "role": user_role.dict()}
+        
+    except Exception as e:
+        logging.error(f"Role switch error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/beta/roles/available")
+async def get_available_roles():
+    """Get list of available testing roles"""
+    roles = [
+        {"name": "CEO", "description": "Executive dashboard and high-level analytics"},
+        {"name": "Manager", "description": "Team management and workflow oversight"},
+        {"name": "Employee", "description": "Daily tasks and simplified interface"},
+        {"name": "Developer", "description": "Technical features and API access"},
+        {"name": "Sales Rep", "description": "CRM integration and sales analytics"},
+        {"name": "Customer Success", "description": "Support tools and customer insights"}
+    ]
+    return {"roles": roles}
+
+@app.get("/api/beta/roles/current/{user_id}")
+async def get_current_role(user_id: str):
+    """Get user's current role configuration"""
+    try:
+        role = await db.user_roles.find_one({"user_id": user_id})
+        if not role:
+            # Default role
+            return {
+                "role_name": "Employee",
+                "permissions": ["basic_access"],
+                "ui_settings": {"default_view": True}
+            }
+        return role
+    except Exception as e:
+        logging.error(f"Get current role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# D2: Guided Feature Tours
+@app.post("/api/beta/tours/create")
+async def create_feature_tour(tour_data: dict):
+    """Create a new guided feature tour"""
+    try:
+        tour = FeatureTour(**tour_data)
+        tour_dict = tour.dict()
+        
+        await db.feature_tours.insert_one(tour_dict)
+        return {"message": "Tour created successfully", "tour_id": tour.id}
+        
+    except Exception as e:
+        logging.error(f"Create tour error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/beta/tours/user/{user_id}")
+async def get_user_tours(user_id: str):
+    """Get available tours for user based on their role"""
+    try:
+        # Get user's current role
+        user_role = await db.user_roles.find_one({"user_id": user_id})
+        current_role = user_role.get("role_name", "Employee") if user_role else "Employee"
+        
+        # Get tours for this role
+        tours = await db.feature_tours.find({
+            "is_active": True,
+            "$or": [
+                {"target_roles": {"$in": [current_role]}},
+                {"target_roles": {"$size": 0}}  # Tours available to all roles
+            ]
+        }).to_list(length=None)
+        
+        # Get user's progress for each tour
+        tour_progress = await db.user_tour_progress.find({"user_id": user_id}).to_list(length=None)
+        progress_dict = {p["tour_id"]: p for p in tour_progress}
+        
+        # Combine tours with progress
+        result = []
+        for tour in tours:
+            tour_info = tour.copy()
+            progress = progress_dict.get(tour["id"], {})
+            tour_info["progress"] = {
+                "current_step": progress.get("current_step", 0),
+                "completed": progress.get("completed", False),
+                "started": bool(progress)
+            }
+            result.append(tour_info)
+        
+        return {"tours": result}
+        
+    except Exception as e:
+        logging.error(f"Get user tours error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/beta/tours/start")
+async def start_tour(tour_data: dict):
+    """Start a feature tour for a user"""
+    try:
+        user_id = tour_data.get('user_id')
+        tour_id = tour_data.get('tour_id')
+        
+        if not user_id or not tour_id:
+            raise HTTPException(status_code=400, detail="user_id and tour_id required")
+        
+        # Create or update tour progress
+        progress = UserTourProgress(
+            user_id=user_id,
+            tour_id=tour_id,
+            current_step=0
+        )
+        
+        await db.user_tour_progress.update_one(
+            {"user_id": user_id, "tour_id": tour_id},
+            {"$set": progress.dict()},
+            upsert=True
+        )
+        
+        # Track usage event
+        event = UsageEvent(
+            user_id=user_id,
+            event_type="tour_started",
+            feature_name="guided_tours",
+            metadata={"tour_id": tour_id}
+        )
+        await db.usage_events.insert_one(event.dict())
+        
+        return {"message": "Tour started successfully"}
+        
+    except Exception as e:
+        logging.error(f"Start tour error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/beta/tours/progress")
+async def update_tour_progress(progress_data: dict):
+    """Update user's progress in a tour"""
+    try:
+        user_id = progress_data.get('user_id')
+        tour_id = progress_data.get('tour_id')
+        step = progress_data.get('step', 0)
+        completed = progress_data.get('completed', False)
+        
+        update_data = {
+            "current_step": step,
+            "completed": completed
+        }
+        
+        if completed:
+            update_data["completed_at"] = datetime.now(timezone.utc)
+        
+        await db.user_tour_progress.update_one(
+            {"user_id": user_id, "tour_id": tour_id},
+            {"$set": update_data}
+        )
+        
+        # Track completion event
+        if completed:
+            event = UsageEvent(
+                user_id=user_id,
+                event_type="tour_completed",
+                feature_name="guided_tours",
+                metadata={"tour_id": tour_id, "steps_completed": step}
+            )
+            await db.usage_events.insert_one(event.dict())
+        
+        return {"message": "Progress updated successfully"}
+        
+    except Exception as e:
+        logging.error(f"Update tour progress error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# D3: Feedback Collection System
+@app.post("/api/beta/feedback/submit")
+async def submit_feedback(feedback_data: dict):
+    """Submit user feedback for a feature"""
+    try:
+        feedback = FeedbackEntry(**feedback_data)
+        feedback_dict = feedback.dict()
+        
+        await db.feedback_entries.insert_one(feedback_dict)
+        
+        # Track usage event
+        event = UsageEvent(
+            user_id=feedback.user_id,
+            event_type="feedback_submitted",
+            feature_name=feedback.feature_name,
+            metadata={
+                "feedback_type": feedback.feedback_type,
+                "rating": feedback.rating
+            }
+        )
+        await db.usage_events.insert_one(event.dict())
+        
+        return {"message": "Feedback submitted successfully", "feedback_id": feedback.id}
+        
+    except Exception as e:
+        logging.error(f"Submit feedback error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/beta/feedback/feature/{feature_name}")
+async def get_feature_feedback(feature_name: str):
+    """Get feedback for a specific feature"""
+    try:
+        feedback_list = await db.feedback_entries.find({
+            "feature_name": feature_name
+        }).sort("created_at", -1).to_list(length=100)
+        
+        # Calculate summary statistics
+        total_feedback = len(feedback_list)
+        ratings = [f["rating"] for f in feedback_list if f.get("rating")]
+        avg_rating = sum(ratings) / len(ratings) if ratings else 0
+        
+        feedback_types = {}
+        for f in feedback_list:
+            feedback_types[f["feedback_type"]] = feedback_types.get(f["feedback_type"], 0) + 1
+        
+        return {
+            "feedback": feedback_list,
+            "summary": {
+                "total_count": total_feedback,
+                "average_rating": round(avg_rating, 2),
+                "rating_count": len(ratings),
+                "feedback_types": feedback_types
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Get feature feedback error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# D4: Usage Analytics Dashboard  
+@app.post("/api/beta/analytics/track")
+async def track_usage_event(event_data: dict):
+    """Track a usage analytics event"""
+    try:
+        event = UsageEvent(**event_data)
+        event_dict = event.dict()
+        
+        await db.usage_events.insert_one(event_dict)
+        return {"message": "Event tracked successfully"}
+        
+    except Exception as e:
+        logging.error(f"Track usage event error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/beta/analytics/dashboard/{user_id}")
+async def get_beta_analytics_dashboard(user_id: str):
+    """Get beta testing analytics dashboard data"""
+    try:
+        # Check if user has analytics permissions
+        user_role = await db.user_roles.find_one({"user_id": user_id})
+        if not user_role or "analytics" not in user_role.get("permissions", []):
+            raise HTTPException(status_code=403, detail="Analytics access required")
+        
+        # Get usage statistics
+        total_users = await db.users.count_documents({})
+        
+        # Feature usage counts
+        feature_usage = await db.usage_events.aggregate([
+            {"$group": {"_id": "$feature_name", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10}
+        ]).to_list(length=None)
+        
+        active_features = {item["_id"]: item["count"] for item in feature_usage}
+        
+        # Feedback summary
+        feedback_summary = await db.feedback_entries.aggregate([
+            {"$group": {
+                "_id": "$feedback_type",
+                "count": {"$sum": 1},
+                "avg_rating": {"$avg": "$rating"}
+            }}
+        ]).to_list(length=None)
+        
+        feedback_dict = {}
+        for item in feedback_summary:
+            feedback_dict[item["_id"]] = {
+                "count": item["count"],
+                "avg_rating": round(item.get("avg_rating", 0), 2)
+            }
+        
+        # Tour completion rates
+        tour_completion = await db.user_tour_progress.aggregate([
+            {"$group": {
+                "_id": "$tour_id",
+                "total": {"$sum": 1},
+                "completed": {"$sum": {"$cond": ["$completed", 1, 0]}}
+            }},
+            {"$project": {
+                "completion_rate": {"$divide": ["$completed", "$total"]}
+            }}
+        ]).to_list(length=None)
+        
+        tour_rates = {item["_id"]: round(item["completion_rate"], 2) for item in tour_completion}
+        
+        # Usage trends (last 7 days)
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        usage_trends = await db.usage_events.aggregate([
+            {"$match": {"timestamp": {"$gte": seven_days_ago}}},
+            {"$group": {
+                "_id": {
+                    "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$timestamp"}},
+                    "event_type": "$event_type"
+                },
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"_id.date": 1}}
+        ]).to_list(length=None)
+        
+        trends = []
+        for item in usage_trends:
+            trends.append({
+                "date": item["_id"]["date"],
+                "event_type": item["_id"]["event_type"],
+                "count": item["count"]
+            })
+        
+        analytics = BetaAnalytics(
+            total_users=total_users,
+            active_features=active_features,
+            feedback_summary=feedback_dict,
+            tour_completion_rates=tour_rates,
+            usage_trends=trends
+        )
+        
+        return analytics.dict()
+        
+    except Exception as e:
+        logging.error(f"Get beta analytics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/beta/analytics/user-activity/{user_id}")
+async def get_user_activity_analytics(user_id: str, days: int = 7):
+    """Get detailed user activity analytics"""
+    try:
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        # User's activity events
+        events = await db.usage_events.find({
+            "user_id": user_id,
+            "timestamp": {"$gte": start_date}
+        }).sort("timestamp", -1).to_list(length=100)
+        
+        # Activity summary
+        event_counts = {}
+        feature_usage = {}
+        
+        for event in events:
+            event_type = event["event_type"]
+            feature = event["feature_name"]
+            
+            event_counts[event_type] = event_counts.get(event_type, 0) + 1
+            feature_usage[feature] = feature_usage.get(feature, 0) + 1
+        
+        return {
+            "user_id": user_id,
+            "period_days": days,
+            "total_events": len(events),
+            "event_breakdown": event_counts,
+            "feature_usage": feature_usage,
+            "recent_events": events[:20]  # Last 20 events
+        }
+        
+    except Exception as e:
+        logging.error(f"Get user activity error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize performance optimizations on startup"""
