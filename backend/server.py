@@ -5752,6 +5752,11 @@ async def get_user_activity_analytics(user_id: str, days: int = 7):
             "timestamp": {"$gte": start_date}
         }).sort("timestamp", -1).to_list(length=100)
         
+        # Remove MongoDB ObjectIds to avoid serialization issues
+        for event in events:
+            if '_id' in event:
+                del event['_id']
+        
         # Activity summary
         event_counts = {}
         feature_usage = {}
