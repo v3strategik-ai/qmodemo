@@ -1372,6 +1372,249 @@ Instructions:
 
     return system_message
 
+# F3: Security - Authentication Routes
+@api_router.post("/auth/register", response_model=Token)
+async def register_user(user_data: UserRegister):
+    """Register a new user"""
+    try:
+        # Check if user already exists
+        existing_user = await db.users.find_one({"email": user_data.email})
+        if existing_user:
+            raise HTTPException(status_code=409, detail="User already exists")
+        
+        # Hash password
+        password_hash = get_password_hash(user_data.password)
+        
+        # Create user
+        user = User(
+            username=user_data.username,
+            email=user_data.email,
+            role=user_data.role,
+            password_hash=password_hash
+        )
+        
+        await db.users.insert_one(user.dict())
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": user.id})
+        
+        # Create session
+        session = UserSession(
+            user_id=user.id,
+            token=access_token,
+            expires_at=datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+        )
+        await db.user_sessions.insert_one(session.dict())
+        
+        logging.info(f"User registered: {user.email}")
+        
+        return Token(
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=JWT_EXPIRATION_HOURS * 3600,
+            user_id=user.id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Registration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to register user")
+
+@api_router.post("/auth/login", response_model=Token)
+async def login_user(user_data: UserLogin):
+    """Authenticate user and return token"""
+    try:
+        # Find user
+        user = await db.users.find_one({"email": user_data.email})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Check if account is locked
+        if user.get("locked_until") and datetime.utcnow() < user["locked_until"]:
+            raise HTTPException(status_code=423, detail="Account temporarily locked")
+        
+        # Verify password
+        if not verify_password(user_data.password, user.get("password_hash", "")):
+            # Increment failed attempts
+            failed_attempts = user.get("failed_login_attempts", 0) + 1
+            update_data = {"failed_login_attempts": failed_attempts}
+            
+            # Lock account after 5 failed attempts
+            if failed_attempts >= 5:
+                update_data["locked_until"] = datetime.utcnow() + timedelta(minutes=30)
+            
+            await db.users.update_one({"id": user["id"]}, {"$set": update_data})
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Reset failed attempts on successful login
+        await db.users.update_one(
+            {"id": user["id"]}, 
+            {
+                "$set": {
+                    "failed_login_attempts": 0,
+                    "last_login": datetime.utcnow(),
+                    "locked_until": None
+                }
+            }
+        )
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": user["id"]})
+        
+        # Create session
+        session = UserSession(
+            user_id=user["id"],
+            token=access_token,
+            expires_at=datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+        )
+        await db.user_sessions.insert_one(session.dict())
+        
+        logging.info(f"User logged in: {user['email']}")
+        
+        return Token(
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=JWT_EXPIRATION_HOURS * 3600,
+            user_id=user["id"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to authenticate user")
+
+@api_router.post("/auth/logout")
+async def logout_user(current_user: dict = Depends(get_current_user)):
+    """Logout user and invalidate session"""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        # Invalidate all user sessions
+        await db.user_sessions.update_many(
+            {"user_id": current_user["id"]},
+            {"$set": {"is_active": False}}
+        )
+        
+        logging.info(f"User logged out: {current_user['email']}")
+        return {"message": "Successfully logged out"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Logout error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to logout user")
+
+@api_router.get("/auth/me", response_model=User)
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """Get current user information"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Remove sensitive fields
+    user_data = current_user.copy()
+    user_data.pop("password_hash", None)
+    return User(**user_data)
+
+@api_router.post("/auth/change-password")
+async def change_password(
+    password_data: ChangePassword,
+    current_user: dict = Depends(get_current_user)
+):
+    """Change user password"""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        # Verify current password
+        if not verify_password(password_data.current_password, current_user.get("password_hash", "")):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        # Hash new password
+        new_password_hash = get_password_hash(password_data.new_password)
+        
+        # Update password
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$set": {"password_hash": new_password_hash}}
+        )
+        
+        # Invalidate all sessions except current
+        await db.user_sessions.update_many(
+            {"user_id": current_user["id"]},
+            {"$set": {"is_active": False}}
+        )
+        
+        logging.info(f"Password changed for user: {current_user['email']}")
+        return {"message": "Password changed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Change password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to change password")
+
+# F1: Performance - Monitoring Routes
+@api_router.get("/performance/metrics")
+async def get_performance_metrics(current_user: dict = Depends(get_current_user)):
+    """Get system performance metrics"""
+    try:
+        if not current_user or current_user.get("role") not in ["admin", "owner"]:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Get recent performance metrics
+        metrics = await db.performance_metrics.find().sort("timestamp", -1).limit(100).to_list(100)
+        
+        # Calculate averages
+        if metrics:
+            avg_response_time = sum(m["response_time_ms"] for m in metrics) / len(metrics)
+            error_rate = len([m for m in metrics if m["status_code"] >= 400]) / len(metrics) * 100
+        else:
+            avg_response_time = 0
+            error_rate = 0
+        
+        return {
+            "average_response_time_ms": avg_response_time,
+            "error_rate_percent": error_rate,
+            "total_requests": len(metrics),
+            "recent_metrics": metrics[:20]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Performance metrics error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve performance metrics")
+
+@api_router.get("/performance/cache-stats")
+async def get_cache_stats(current_user: dict = Depends(get_current_user)):
+    """Get cache performance statistics"""
+    try:
+        if not current_user or current_user.get("role") not in ["admin", "owner"]:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        if not redis_client:
+            return {"message": "Cache not available", "stats": {}}
+        
+        # Get cache info from Redis
+        info = await redis_client.info()
+        
+        return {
+            "connected_clients": info.get("connected_clients", 0),
+            "used_memory": info.get("used_memory_human", "0B"),
+            "keyspace_hits": info.get("keyspace_hits", 0),
+            "keyspace_misses": info.get("keyspace_misses", 0),
+            "hit_rate": info.get("keyspace_hits", 0) / max(info.get("keyspace_hits", 0) + info.get("keyspace_misses", 0), 1) * 100
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Cache stats error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve cache statistics")
+
 # Conversation session management routes
 @api_router.post("/sessions/new", response_model=ConversationSession)
 async def create_new_session(user_id: str):
