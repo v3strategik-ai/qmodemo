@@ -2016,6 +2016,111 @@ async def get_user_white_label_config(user_id: str):
         raise HTTPException(status_code=500, detail="Failed to retrieve white-label configuration")
 
 # Workflow Builder routes
+# E1: Enhanced Workflow Automation - Advanced Node Types
+def get_enhanced_node_types():
+    """Get enhanced workflow node types with advanced capabilities"""
+    return [
+        {
+            "type": "trigger",
+            "name": "Trigger Node",
+            "description": "Starts workflow execution",
+            "category": "core",
+            "inputs": [],
+            "outputs": ["output"],
+            "subtypes": ["webhook", "schedule", "email", "form_submission", "api_event"]
+        },
+        {
+            "type": "condition",
+            "name": "Condition Node", 
+            "description": "Conditional logic branching",
+            "category": "core",
+            "inputs": ["input"],
+            "outputs": ["true", "false"],
+            "subtypes": ["simple_condition", "complex_condition", "multi_condition"]
+        },
+        {
+            "type": "ai_response",
+            "name": "AI Response Node",
+            "description": "AI-powered processing and responses",
+            "category": "ai",
+            "inputs": ["input"],
+            "outputs": ["output"],
+            "subtypes": ["text_generation", "data_analysis", "classification", "summarization"]
+        },
+        {
+            "type": "database",
+            "name": "Database Node",
+            "description": "Database operations (read, write, update, delete)",
+            "category": "data",
+            "inputs": ["input"],
+            "outputs": ["output", "error"],
+            "subtypes": ["query", "insert", "update", "delete", "bulk_operation"]
+        },
+        {
+            "type": "api_call",
+            "name": "API Call Node",
+            "description": "External API integrations",
+            "category": "integration",
+            "inputs": ["input"],
+            "outputs": ["output", "error"],
+            "subtypes": ["rest_api", "graphql", "webhook", "soap"]
+        },
+        {
+            "type": "loop",
+            "name": "Loop Node",
+            "description": "Iterate over data collections",
+            "category": "control",
+            "inputs": ["input", "collection"],
+            "outputs": ["item", "complete"],
+            "subtypes": ["for_each", "while_loop", "do_while"]
+        },
+        {
+            "type": "parallel",
+            "name": "Parallel Node",
+            "description": "Execute multiple branches simultaneously",
+            "category": "control",
+            "inputs": ["input"],
+            "outputs": ["branch_1", "branch_2", "branch_3"],
+            "subtypes": ["parallel_execution", "race_condition", "all_complete"]
+        },
+        {
+            "type": "timer",
+            "name": "Timer Node",
+            "description": "Time-based delays and scheduling",
+            "category": "control",
+            "inputs": ["input"],
+            "outputs": ["output"],
+            "subtypes": ["delay", "schedule", "timeout", "recurring"]
+        },
+        {
+            "type": "notification",
+            "name": "Notification Node",
+            "description": "Send notifications (email, SMS, push)",
+            "category": "communication",
+            "inputs": ["input"],
+            "outputs": ["output", "error"],
+            "subtypes": ["email", "sms", "push_notification", "slack", "webhook"]
+        },
+        {
+            "type": "data_transform",
+            "name": "Data Transform Node",
+            "description": "Transform and manipulate data",
+            "category": "data",
+            "inputs": ["input"],
+            "outputs": ["output"],
+            "subtypes": ["map", "filter", "reduce", "format", "validate"]
+        },
+        {
+            "type": "script",
+            "name": "Script Node",
+            "description": "Execute custom JavaScript/Python code",
+            "category": "advanced",
+            "inputs": ["input"],
+            "outputs": ["output", "error"],
+            "subtypes": ["javascript", "python", "json_manipulation", "calculation"]
+        }
+    ]
+
 def get_hardcoded_templates():
     """Get hardcoded workflow templates"""
     return [
