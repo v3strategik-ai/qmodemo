@@ -948,12 +948,12 @@
 
 ## test_plan:
   current_focus:
-    - "Option F: Platform Polish & Optimization Backend Testing - COMPLETED"
-    - "F1: Performance Optimization (1/4 endpoints working)"
-    - "F2: Mobile App Experience (1/4 endpoints working)"
-    - "F3: Advanced Security (3/5 endpoints working)"
-    - "F4: API Documentation & Developer Tools (1/3 endpoints working)"
-    - "Integration Testing (3/4 tests passing)"
+    - "Option D: Beta Testing Optimizers Backend Testing - COMPLETED"
+    - "D1: Role Switcher APIs (4/5 endpoints working - 80% success rate)"
+    - "D2: Guided Tours APIs (3/4 endpoints working - 75% success rate)"
+    - "D3: Feedback Collection APIs (2/3 endpoints working - 67% success rate)"
+    - "D4: Usage Analytics APIs (1/5 endpoints working - 20% success rate)"
+    - "Overall Option D Success Rate: 68.8% (22/32 tests passed)"
   stuck_tasks: 
     - "Real-time Streaming AI Responses Implementation"
     - "WebSocket Voice Integration (infrastructure issue)"
@@ -965,6 +965,10 @@
     - "F2: Mobile App Configuration - Authentication issues"
     - "F3: Session Management - Token invalidation not working"
     - "F4: API Usage Statistics - Response format issue"
+    - "D1: Role Switcher - Get Current Role (MongoDB ObjectId serialization)"
+    - "D2: Guided Tours - Get User Tours (MongoDB ObjectId serialization)"
+    - "D3: Feedback Collection - Get Feature Feedback (MongoDB ObjectId serialization)"
+    - "D4: Usage Analytics - Dashboard and User Activity (null value calculations, ObjectId serialization)"
   test_all: false
   test_priority: "high_first"
 
