@@ -978,7 +978,7 @@ const WidgetDemo = () => {
             </TabsContent>
 
             {/* Advanced Analytics Dashboard Tab */}
-            <TabsContent value="analytics" className="mt-6">
+            <TabsContent value="advanced-analytics" className="mt-6">
               {/* <AdvancedAnalyticsDashboard currentUser={currentUser} /> */}
               <div className="p-6 text-center text-gray-400">
                 Advanced Analytics Dashboard temporarily disabled for debugging
