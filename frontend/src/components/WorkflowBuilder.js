@@ -79,40 +79,111 @@ const WorkflowBuilder = ({ currentUser }) => {
   ];
 
   const nodeTypes = [
+    // Core Node Types
     { 
       type: 'trigger', 
       name: 'Trigger', 
       icon: Zap, 
       color: 'bg-green-500', 
-      description: 'Start workflow execution'
+      description: 'Start workflow execution',
+      category: 'core'
     },
     { 
       type: 'condition', 
       name: 'Condition', 
       icon: GitBranch, 
       color: 'bg-yellow-500', 
-      description: 'Branch workflow based on conditions'
+      description: 'Branch workflow logic',
+      category: 'core'
     },
     { 
       type: 'ai_response', 
       name: 'AI Response', 
-      icon: Activity, 
+      icon: Brain, 
       color: 'bg-purple-500', 
-      description: 'Generate AI-powered responses'
+      description: 'AI-powered processing',
+      category: 'ai'
     },
     { 
       type: 'action', 
       name: 'Action', 
       icon: Play, 
       color: 'bg-blue-500', 
-      description: 'Execute specific actions'
+      description: 'Execute specific actions',
+      category: 'core'
     },
     { 
       type: 'integration', 
       name: 'Integration', 
       icon: Layers, 
       color: 'bg-orange-500', 
-      description: 'Connect to external services'
+      description: 'Connect to external services',
+      category: 'integration'
+    },
+    // Enhanced Node Types (E1 Feature)
+    { 
+      type: 'database', 
+      name: 'Database', 
+      icon: Database, 
+      color: 'bg-teal-500', 
+      description: 'Database operations',
+      category: 'data'
+    },
+    { 
+      type: 'api_call', 
+      name: 'API Call', 
+      icon: Wifi, 
+      color: 'bg-indigo-500', 
+      description: 'External API calls',
+      category: 'integration'
+    },
+    { 
+      type: 'loop', 
+      name: 'Loop', 
+      icon: RotateCcw, 
+      color: 'bg-pink-500', 
+      description: 'Iterate over collections',
+      category: 'control'
+    },
+    { 
+      type: 'parallel', 
+      name: 'Parallel', 
+      icon: Split, 
+      color: 'bg-cyan-500', 
+      description: 'Execute multiple branches',
+      category: 'control'
+    },
+    { 
+      type: 'timer', 
+      name: 'Timer', 
+      icon: Clock, 
+      color: 'bg-amber-500', 
+      description: 'Time-based delays',
+      category: 'control'
+    },
+    { 
+      type: 'notification', 
+      name: 'Notification', 
+      icon: Bell, 
+      color: 'bg-red-500', 
+      description: 'Send notifications',
+      category: 'communication'
+    },
+    { 
+      type: 'data_transform', 
+      name: 'Transform', 
+      icon: Filter, 
+      color: 'bg-lime-500', 
+      description: 'Transform data',
+      category: 'data'
+    },
+    { 
+      type: 'script', 
+      name: 'Script', 
+      icon: Code, 
+      color: 'bg-violet-500', 
+      description: 'Custom code execution',
+      category: 'advanced'
     }
   ];
 
