@@ -113,6 +113,32 @@ const WidgetDemo = () => {
   
   console.log('WidgetDemo - WebSocket hook re-enabled, connected:', wsConnected);
 
+  // Beta Testing: Track feature usage
+  const trackFeatureUsage = async (featureName, eventType = 'feature_click', metadata = {}) => {
+    if (!currentUser) return;
+    
+    try {
+      await axios.post(`${API}/beta/analytics/track`, {
+        user_id: currentUser.id,
+        event_type: eventType,
+        feature_name: featureName,
+        metadata: {
+          ...metadata,
+          timestamp: new Date().toISOString(),
+          current_tab: activeTab
+        }
+      });
+    } catch (error) {
+      console.error('Failed to track feature usage:', error);
+    }
+  };
+
+  // Track tab changes
+  const handleTabChange = (tabValue) => {
+    setActiveTab(tabValue);
+    trackFeatureUsage(tabValue, 'tab_switched', { previous_tab: activeTab });
+  };
+
   useEffect(() => {
     console.log('WidgetDemo mounting/updating', { currentUser: !!currentUser, userId: currentUser?.id });
     
