@@ -312,6 +312,11 @@ const WidgetDemo = () => {
   };
 
   const loadChatHistory = async (sessionId = currentSessionId) => {
+    if (!currentUser?.id) {
+      console.warn('Cannot load chat history: currentUser not available');
+      return;
+    }
+    
     try {
       let url = `${API}/chat/history/${currentUser.id}`;
       if (sessionId) {
