@@ -3571,6 +3571,320 @@ async def get_integration_categories():
     
     return {"categories": categories}
 
+# E4: Advanced Analytics & Reporting - Dashboard Management
+@api_router.post("/analytics/dashboards/create", response_model=AnalyticsDashboard)
+async def create_analytics_dashboard(dashboard_data: DashboardCreate):
+    """Create a new analytics dashboard"""
+    try:
+        dashboard = AnalyticsDashboard(**dashboard_data.dict())
+        await db.analytics_dashboards.insert_one(dashboard.dict())
+        
+        logging.info(f"Analytics dashboard '{dashboard.name}' created by user {dashboard_data.user_id}")
+        return dashboard
+        
+    except Exception as e:
+        logging.error(f"Create analytics dashboard error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create analytics dashboard")
+
+@api_router.get("/analytics/dashboards/user/{user_id}", response_model=List[AnalyticsDashboard])
+async def get_user_dashboards(user_id: str):
+    """Get analytics dashboards for a user"""
+    try:
+        dashboards = await db.analytics_dashboards.find(
+            {"user_id": user_id}
+        ).sort("updated_at", -1).to_list(length=None)
+        
+        return [AnalyticsDashboard(**dashboard) for dashboard in dashboards]
+        
+    except Exception as e:
+        logging.error(f"Get user dashboards error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get user dashboards")
+
+@api_router.get("/analytics/dashboards/{dashboard_id}", response_model=AnalyticsDashboard)
+async def get_dashboard(dashboard_id: str, user_id: str):
+    """Get a specific analytics dashboard"""
+    try:
+        dashboard = await db.analytics_dashboards.find_one({"id": dashboard_id})
+        if not dashboard:
+            raise HTTPException(status_code=404, detail="Dashboard not found")
+        
+        # Check access permissions (user owns dashboard or it's public)
+        if dashboard["user_id"] != user_id and not dashboard.get("is_public", False):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Increment view count
+        await db.analytics_dashboards.update_one(
+            {"id": dashboard_id},
+            {"$inc": {"view_count": 1}}
+        )
+        
+        return AnalyticsDashboard(**dashboard)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get dashboard error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get dashboard")
+
+@api_router.post("/analytics/reports/templates/create", response_model=ReportTemplate)
+async def create_report_template(template_data: ReportTemplateCreate):
+    """Create a new report template"""
+    try:
+        template = ReportTemplate(**template_data.dict())
+        await db.report_templates.insert_one(template.dict())
+        
+        logging.info(f"Report template '{template.name}' created by user {template_data.user_id}")
+        return template
+        
+    except Exception as e:
+        logging.error(f"Create report template error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create report template")
+
+@api_router.get("/analytics/reports/templates/user/{user_id}", response_model=List[ReportTemplate])
+async def get_user_report_templates(user_id: str):
+    """Get report templates for a user"""
+    try:
+        templates = await db.report_templates.find(
+            {"user_id": user_id, "is_active": True}
+        ).sort("created_at", -1).to_list(length=None)
+        
+        return [ReportTemplate(**template) for template in templates]
+        
+    except Exception as e:
+        logging.error(f"Get user report templates error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get report templates")
+
+@api_router.post("/analytics/reports/generate/{template_id}")
+async def generate_report(template_id: str, user_id: str, parameters: Dict[str, Any] = {}):
+    """Generate a report from a template"""
+    try:
+        # Get template
+        template = await db.report_templates.find_one({"id": template_id, "user_id": user_id})
+        if not template:
+            raise HTTPException(status_code=404, detail="Report template not found")
+        
+        # Simulate report generation (in production, this would generate actual reports)
+        report_data = {
+            "template_id": template_id,
+            "template_name": template["name"],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "parameters": parameters,
+            "status": "completed",
+            "file_size": "2.5 MB",
+            "download_url": f"/api/reports/download/{template_id}",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        }
+        
+        # Update template generation count
+        await db.report_templates.update_one(
+            {"id": template_id},
+            {
+                "$set": {"last_generated": datetime.now(timezone.utc)},
+                "$inc": {"generation_count": 1}
+            }
+        )
+        
+        logging.info(f"Report generated from template {template_id}")
+        return report_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Generate report error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate report")
+
+@api_router.post("/analytics/kpis/create", response_model=AnalyticsKPI)
+async def create_kpi(kpi_data: KPICreate):
+    """Create a new KPI"""
+    try:
+        kpi = AnalyticsKPI(**kpi_data.dict())
+        await db.analytics_kpis.insert_one(kpi.dict())
+        
+        logging.info(f"KPI '{kpi.name}' created by user {kpi_data.user_id}")
+        return kpi
+        
+    except Exception as e:
+        logging.error(f"Create KPI error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create KPI")
+
+@api_router.get("/analytics/kpis/user/{user_id}", response_model=List[AnalyticsKPI])
+async def get_user_kpis(user_id: str, category: Optional[str] = None):
+    """Get KPIs for a user"""
+    try:
+        query = {"user_id": user_id, "is_active": True}
+        if category:
+            query["category"] = category
+        
+        kpis = await db.analytics_kpis.find(query).sort("created_at", -1).to_list(length=None)
+        return [AnalyticsKPI(**kpi) for kpi in kpis]
+        
+    except Exception as e:
+        logging.error(f"Get user KPIs error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get user KPIs")
+
+@api_router.get("/analytics/kpis/{kpi_id}/calculate")
+async def calculate_kpi_value(kpi_id: str, user_id: str, time_range: str = "7d"):
+    """Calculate current value of a KPI"""
+    try:
+        # Get KPI definition
+        kpi = await db.analytics_kpis.find_one({"id": kpi_id, "user_id": user_id})
+        if not kpi:
+            raise HTTPException(status_code=404, detail="KPI not found")
+        
+        # Simulate KPI calculation (in production, this would execute actual queries)
+        import random
+        current_value = round(random.uniform(50, 1000), 2)
+        target_value = kpi.get("target_value", 0)
+        
+        # Calculate performance metrics
+        performance_pct = ((current_value / target_value) * 100) if target_value > 0 else 0
+        trend = random.choice(["up", "down", "stable"])
+        trend_pct = round(random.uniform(-20, 20), 1)
+        
+        result = {
+            "kpi_id": kpi_id,
+            "kpi_name": kpi["name"],
+            "current_value": current_value,
+            "target_value": target_value,
+            "unit": kpi.get("unit", ""),
+            "performance_percentage": round(performance_pct, 1),
+            "trend": trend,
+            "trend_percentage": trend_pct,
+            "time_range": time_range,
+            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "status": "healthy" if performance_pct >= 80 else "warning" if performance_pct >= 60 else "critical"
+        }
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Calculate KPI value error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to calculate KPI value")
+
+@api_router.post("/analytics/models/create", response_model=PredictiveModel)
+async def create_predictive_model(model_data: PredictiveModelCreate):
+    """Create a new predictive model"""
+    try:
+        model = PredictiveModel(**model_data.dict())
+        await db.predictive_models.insert_one(model.dict())
+        
+        logging.info(f"Predictive model '{model.name}' created by user {model_data.user_id}")
+        return model
+        
+    except Exception as e:
+        logging.error(f"Create predictive model error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create predictive model")
+
+@api_router.get("/analytics/models/user/{user_id}", response_model=List[PredictiveModel])
+async def get_user_predictive_models(user_id: str, model_type: Optional[str] = None):
+    """Get predictive models for a user"""
+    try:
+        query = {"user_id": user_id}
+        if model_type:
+            query["model_type"] = model_type
+        
+        models = await db.predictive_models.find(query).sort("created_at", -1).to_list(length=None)
+        return [PredictiveModel(**model) for model in models]
+        
+    except Exception as e:
+        logging.error(f"Get user predictive models error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get user predictive models")
+
+@api_router.post("/analytics/models/{model_id}/predict")
+async def make_prediction(model_id: str, user_id: str, input_data: Dict[str, Any]):
+    """Make a prediction using a trained model"""
+    try:
+        # Get model
+        model = await db.predictive_models.find_one({"id": model_id, "user_id": user_id})
+        if not model:
+            raise HTTPException(status_code=404, detail="Predictive model not found")
+        
+        if not model.get("is_production", False):
+            raise HTTPException(status_code=400, detail="Model is not in production")
+        
+        # Simulate prediction (in production, this would use actual trained models)
+        import random
+        
+        if model["model_type"] == "classification":
+            prediction = random.choice(["High Risk", "Medium Risk", "Low Risk"])
+            confidence = round(random.uniform(0.6, 0.95), 3)
+        elif model["model_type"] == "regression":
+            prediction = round(random.uniform(100, 10000), 2)
+            confidence = round(random.uniform(0.7, 0.9), 3)
+        else:
+            prediction = "Cluster A"
+            confidence = round(random.uniform(0.8, 0.95), 3)
+        
+        result = {
+            "model_id": model_id,
+            "model_name": model["name"],
+            "model_type": model["model_type"],
+            "prediction": prediction,
+            "confidence": confidence,
+            "input_data": input_data,
+            "features_used": model.get("features", []),
+            "prediction_time": datetime.now(timezone.utc).isoformat()
+        }
+        
+        logging.info(f"Prediction made using model {model_id}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Make prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to make prediction")
+
+@api_router.get("/analytics/overview/{user_id}")
+async def get_analytics_overview(user_id: str):
+    """Get analytics overview for a user"""
+    try:
+        # Get counts of user's analytics assets
+        dashboards_count = await db.analytics_dashboards.count_documents({"user_id": user_id})
+        kpis_count = await db.analytics_kpis.count_documents({"user_id": user_id, "is_active": True})
+        models_count = await db.predictive_models.count_documents({"user_id": user_id})
+        reports_count = await db.report_templates.count_documents({"user_id": user_id, "is_active": True})
+        
+        # Get recent activity (simplified)
+        recent_dashboards = await db.analytics_dashboards.find(
+            {"user_id": user_id}
+        ).sort("updated_at", -1).limit(3).to_list(3)
+        
+        overview = {
+            "user_id": user_id,
+            "summary": {
+                "dashboards": dashboards_count,
+                "kpis": kpis_count,
+                "predictive_models": models_count,
+                "report_templates": reports_count
+            },
+            "recent_dashboards": [
+                {
+                    "id": d["id"],
+                    "name": d["name"],
+                    "updated_at": d["updated_at"],
+                    "view_count": d.get("view_count", 0)
+                }
+                for d in recent_dashboards
+            ],
+            "quick_stats": {
+                "total_dashboard_views": sum(d.get("view_count", 0) for d in recent_dashboards),
+                "active_kpis": kpis_count,
+                "production_models": await db.predictive_models.count_documents({
+                    "user_id": user_id, 
+                    "is_production": True
+                })
+            }
+        }
+        
+        return overview
+        
+    except Exception as e:
+        logging.error(f"Get analytics overview error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get analytics overview")
+
 # Analytics routes for admin
 @api_router.get("/admin/analytics")
 async def get_admin_analytics():
