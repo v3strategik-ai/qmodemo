@@ -39,11 +39,11 @@ const API = `${BACKEND_URL}/api`;
 const WidgetDemo = () => {
   console.log('🚀 WidgetDemo component starting to render...');
   
-  try {
-    const navigate = useNavigate();
-    const { currentUser, register } = useAuth();
-    
-    console.log('✅ Auth hook successful - currentUser:', !!currentUser, currentUser?.id);
+  const navigate = useNavigate();
+  console.log('✅ useNavigate hook successful');
+  
+  const { currentUser, register } = useAuth();
+  console.log('✅ useAuth hook successful - currentUser:', !!currentUser, currentUser?.id);
   const [activeTab, setActiveTab] = useState('chat');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
