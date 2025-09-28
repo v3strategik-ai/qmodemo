@@ -5465,8 +5465,19 @@ async def get_user_tours(user_id: str):
             ]
         }).to_list(length=None)
         
+        # Remove MongoDB ObjectIds to avoid serialization issues
+        for tour in tours:
+            if '_id' in tour:
+                del tour['_id']
+        
         # Get user's progress for each tour
         tour_progress = await db.user_tour_progress.find({"user_id": user_id}).to_list(length=None)
+        
+        # Remove ObjectIds from progress data
+        for progress in tour_progress:
+            if '_id' in progress:
+                del progress['_id']
+        
         progress_dict = {p["tour_id"]: p for p in tour_progress}
         
         # Combine tours with progress
