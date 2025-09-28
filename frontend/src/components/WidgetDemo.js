@@ -27,6 +27,8 @@ import TeamCollaboration from './TeamCollaboration';
 import BrandCustomization from './BrandCustomization';
 import WorkflowBuilder from './WorkflowBuilder';
 import AIAgentManager from './AIAgentManager';
+import IntegrationMarketplaceAdvanced from './IntegrationMarketplaceAdvanced';
+import AdvancedAnalyticsDashboard from './AdvancedAnalyticsDashboard';
 import useWebSocket from '../hooks/useWebSocket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
