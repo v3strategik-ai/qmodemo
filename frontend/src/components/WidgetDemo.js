@@ -979,7 +979,7 @@ const WidgetDemo = () => {
 
             {/* Voice Tab */}
             <TabsContent value="voice" className="mt-6">
-              <VoiceInterface 
+              {/* <VoiceInterface 
                 currentUser={currentUser}
                 voiceSettings={config.voice_settings}
                 onVoiceSettingsChange={(newSettings) => {
@@ -998,7 +998,10 @@ const WidgetDemo = () => {
                   console.log('TTS audio received');
                 }}
                 ref={voiceInterfaceRef}
-              />
+              /> */}
+              <div className="p-6 text-center text-gray-400">
+                Voice Interface temporarily disabled for debugging
+              </div>
             </TabsContent>
 
             {/* Team Collaboration Tab */}
