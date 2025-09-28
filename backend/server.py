@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
-import asyncio
 import logging
 import os
 import tempfile
