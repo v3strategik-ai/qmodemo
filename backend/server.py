@@ -16,6 +16,8 @@ from datetime import datetime, timezone, timedelta
 import io
 import base64
 
+# E2: Advanced AI Integration
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
