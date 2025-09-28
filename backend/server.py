@@ -3660,13 +3660,6 @@ async def chat_with_ai(chat_request: ChatRequest):
         logging.error(f"Chat error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
 
-@api_router.get("/chat/history/{user_id}", response_model=List[ChatMessage])
-async def get_chat_history(user_id: str, limit: int = 50):
-    messages = await db.chat_messages.find(
-        {"user_id": user_id}
-    ).sort("timestamp", -1).limit(limit).to_list(limit)
-    return [ChatMessage(**msg) for msg in messages]
-
 # Rating and feedback routes
 @api_router.post("/chat/rate")
 async def rate_chat_response(rating_data: ChatRating):
