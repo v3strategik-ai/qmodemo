@@ -350,6 +350,7 @@ const VoiceInterface = ({
               onCheckedChange={(value) => handleSettingChange('enabled', value)}
             />
             <span className="text-sm text-gray-300">Enable Voice</span>
+            <FeedbackButton currentUser={currentUser} featureName="voice_interface" />
           </div>
         </div>
 
