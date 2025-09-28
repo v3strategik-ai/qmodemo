@@ -655,6 +655,16 @@ const WidgetDemo = () => {
                 className="glass neon-border"
               />
             </div>
+            <div>
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="glass neon-border"
+              />
+            </div>
             <Button type="submit" className="w-full tech-button" disabled={loading}>
               <Bot className="w-4 h-4 mr-2" />
               Start Widget Demo
