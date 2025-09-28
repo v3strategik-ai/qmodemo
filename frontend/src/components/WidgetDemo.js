@@ -658,6 +658,10 @@ const WidgetDemo = () => {
                 <Workflow className="w-4 h-4" />
                 Workflows
               </TabsTrigger>
+              <TabsTrigger value="ai-agents" className="flex items-center gap-2">
+                <Bot className="w-4 h-4" />
+                AI Agents
+              </TabsTrigger>
               <TabsTrigger value="integrations" className="flex items-center gap-2">
                 <Zap className="w-4 h-4" />
                 Integrations
