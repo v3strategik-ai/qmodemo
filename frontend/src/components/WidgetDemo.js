@@ -664,10 +664,6 @@ const WidgetDemo = () => {
                 <Layers className="w-4 h-4" />
                 Marketplace
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Analytics
-              </TabsTrigger>
               <TabsTrigger value="insights" className="flex items-center gap-2">
                 <Brain className="w-4 h-4" />
                 Insights
