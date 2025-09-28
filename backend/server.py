@@ -2565,6 +2565,110 @@ async def get_workflow_node_types(category: Optional[str] = None):
         logging.error(f"Get workflow node types error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve workflow node types")
 
+async def execute_workflow_node(node: Dict[str, Any], input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a single workflow node based on its type"""
+    try:
+        node_type = node.get("type", "action")
+        node_config = node.get("configuration", {})
+        
+        # Simulate different execution times and behaviors based on node type
+        if node_type == "trigger":
+            await asyncio.sleep(0.1)
+            return {
+                "status": "success",
+                "output": {"triggered": True, "trigger_data": input_data},
+                "execution_time_ms": 100
+            }
+        
+        elif node_type == "ai_response":
+            await asyncio.sleep(0.5)  # AI processing takes longer
+            prompt = node_config.get("prompt", "Generate a response")
+            return {
+                "status": "success", 
+                "output": {"ai_response": f"AI generated response for: {prompt}"},
+                "execution_time_ms": 500
+            }
+        
+        elif node_type == "condition":
+            await asyncio.sleep(0.1)
+            condition = node_config.get("condition", "true")
+            result = eval(condition.replace("input.", "input_data.get('"))  # Simplified evaluation
+            return {
+                "status": "success",
+                "output": {"condition_result": result, "branch": "true" if result else "false"},
+                "execution_time_ms": 100
+            }
+        
+        elif node_type == "integration":
+            await asyncio.sleep(0.3)
+            integration_name = node_config.get("integration", "unknown")
+            return {
+                "status": "success",
+                "output": {"integration_result": f"Data from {integration_name}", "records_processed": 10},
+                "execution_time_ms": 300
+            }
+        
+        elif node_type == "database":
+            await asyncio.sleep(0.2)
+            operation = node_config.get("operation", "read")
+            return {
+                "status": "success",
+                "output": {"database_operation": operation, "affected_rows": 5},
+                "execution_time_ms": 200
+            }
+        
+        elif node_type == "api_call":
+            await asyncio.sleep(0.4)
+            endpoint = node_config.get("endpoint", "/api/data")
+            return {
+                "status": "success",
+                "output": {"api_response": f"Response from {endpoint}", "status_code": 200},
+                "execution_time_ms": 400
+            }
+        
+        elif node_type == "notification":
+            await asyncio.sleep(0.1)
+            message = node_config.get("message", "Notification sent")
+            return {
+                "status": "success",
+                "output": {"notification_sent": True, "message": message},
+                "execution_time_ms": 100
+            }
+        
+        elif node_type == "data_transform":
+            await asyncio.sleep(0.2)
+            transformation = node_config.get("transformation", "identity")
+            return {
+                "status": "success",
+                "output": {"transformed_data": input_data, "transformation": transformation},
+                "execution_time_ms": 200
+            }
+        
+        elif node_type == "script":
+            await asyncio.sleep(0.3)
+            script_name = node_config.get("script", "custom_script.py")
+            return {
+                "status": "success",
+                "output": {"script_result": f"Executed {script_name}", "exit_code": 0},
+                "execution_time_ms": 300
+            }
+        
+        else:  # Default action node
+            await asyncio.sleep(0.2)
+            return {
+                "status": "success",
+                "output": {"action_completed": True, "node_type": node_type},
+                "execution_time_ms": 200
+            }
+            
+    except Exception as e:
+        logging.error(f"Node execution error for {node.get('id', 'unknown')}: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "execution_time_ms": 0
+        }
+
 @api_router.post("/workflows/execute", response_model=WorkflowExecution)
 async def execute_workflow(execution_request: WorkflowExecuteRequest):
     """Execute a workflow (simulation for demo purposes)"""
