@@ -969,10 +969,7 @@ const WidgetDemo = () => {
               <IntegrationMarketplace currentUser={currentUser} />
             </TabsContent>
 
-            {/* Brand Customization Tab */}
-            <TabsContent value="branding" className="mt-6">
-              <BrandCustomization currentUser={currentUser} />
-            </TabsContent>
+            {/* Brand Customization Tab - Removed */}
 
             {/* Smart Insights Tab */}
             <TabsContent value="insights" className="mt-6">
