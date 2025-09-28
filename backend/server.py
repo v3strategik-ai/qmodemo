@@ -5610,6 +5610,11 @@ async def get_feature_feedback(feature_name: str):
             "feature_name": feature_name
         }).sort("created_at", -1).to_list(length=100)
         
+        # Remove MongoDB ObjectIds to avoid serialization issues
+        for feedback in feedback_list:
+            if '_id' in feedback:
+                del feedback['_id']
+        
         # Calculate summary statistics
         total_feedback = len(feedback_list)
         ratings = [f["rating"] for f in feedback_list if f.get("rating")]
