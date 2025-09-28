@@ -963,6 +963,85 @@ class PredictiveModelCreate(BaseModel):
     target: Optional[str] = None
     user_id: str
 
+# F1: Performance Models
+class PerformanceMetrics(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    endpoint: str
+    method: str
+    response_time_ms: float
+    status_code: int
+    user_id: Optional[str] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# F3: Security Models
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: Dict[str, Any]
+    expires_in: int = JWT_EXPIRATION_HOURS * 3600
+
+class SecurityAuditLog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None
+    action: str
+    resource: Optional[str] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    success: bool = True
+    details: Dict[str, Any] = {}
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SessionInfo(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    last_activity: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=24))
+    is_active: bool = True
+
+# F2: Mobile Models
+class MobileConfig(BaseModel):
+    user_id: str
+    push_notifications_enabled: bool = True
+    offline_sync_enabled: bool = True
+    mobile_theme: str = "dark"
+    compact_mode: bool = False
+    gesture_controls: bool = True
+    auto_sync_interval: int = 300  # seconds
+
+class PushSubscription(BaseModel):
+    user_id: str
+    endpoint: str
+    p256dh_key: str
+    auth_key: str
+    user_agent: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# F4: API Documentation Models
+class APIUsageStats(BaseModel):
+    endpoint: str
+    method: str
+    calls_count: int
+    avg_response_time: float
+    success_rate: float
+    last_called: datetime
+
+class DeveloperKey(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    key_name: str
+    api_key: str
+    permissions: List[str] = []
+    rate_limit: int = 1000  # requests per hour
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used: Optional[datetime] = None
+
 class WorkflowExecution(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     workflow_id: str
