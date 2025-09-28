@@ -960,9 +960,14 @@ const WidgetDemo = () => {
               <AIAgentManager currentUser={currentUser} />
             </TabsContent>
 
-            {/* Integration Marketplace Tab */}
+            {/* Integration Marketplace Advanced Tab */}
             <TabsContent value="integrations" className="mt-6">
-              <IntegrationMarketplace currentUser={currentUser} />
+              <IntegrationMarketplaceAdvanced currentUser={currentUser} />
+            </TabsContent>
+
+            {/* Advanced Analytics Dashboard Tab */}
+            <TabsContent value="analytics" className="mt-6">
+              <AdvancedAnalyticsDashboard currentUser={currentUser} />
             </TabsContent>
 
             {/* Brand Customization Tab - Removed */}
