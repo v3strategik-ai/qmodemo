@@ -33,7 +33,14 @@ import {
   BarChart3,
   Eye,
   Layers,
-  MousePointer
+  MousePointer,
+  Brain,
+  Database,
+  Wifi,
+  RotateCcw,
+  Split,
+  Bell,
+  Code
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
