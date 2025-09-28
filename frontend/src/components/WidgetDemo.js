@@ -1006,7 +1006,10 @@ const WidgetDemo = () => {
 
             {/* Team Collaboration Tab */}
             <TabsContent value="teams" className="mt-6">
-              <TeamCollaboration currentUser={currentUser} />
+              {/* <TeamCollaboration currentUser={currentUser} /> */}
+              <div className="p-6 text-center text-gray-400">
+                Team Collaboration temporarily disabled for debugging
+              </div>
             </TabsContent>
 
             {/* Workflow Builder Tab */}
