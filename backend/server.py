@@ -1732,6 +1732,7 @@ async def get_ai_personalities():
 
 # Enhanced chat routes with session support
 @api_router.get("/chat/history/{user_id}", response_model=List[ChatMessage])
+@cache_result(expiration=60)  # F1: Cache for 1 minute
 async def get_chat_history(user_id: str, session_id: Optional[str] = None, limit: int = 50):
     """Get chat history for user, optionally filtered by session"""
     try:
