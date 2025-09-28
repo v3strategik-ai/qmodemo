@@ -1155,7 +1155,7 @@ async def handle_streaming_chat(message_data: Dict, user_id: str, session_id: st
         personality = message_data.get("personality", "Professional Assistant")
         
         # Get or create conversation session
-        conversation_session = await get_or_create_session(user_id, session_id)
+        await get_or_create_session(user_id, session_id)
         
         # Get user config and knowledge base
         user_config = await db.widget_configs.find_one({"user_id": user_id})
