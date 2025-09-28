@@ -97,18 +97,39 @@ const WidgetDemo = () => {
   } = useWebSocket(currentUser?.id);
 
   useEffect(() => {
+    console.log('WidgetDemo mounting/updating', { currentUser: !!currentUser, userId: currentUser?.id });
+    
     if (currentUser) {
       setIsLoggedIn(true);
-      loadChatHistory();
-      loadConfig();
-      loadKnowledgeBase();
-      loadConversationSessions();
-      loadAIPersonalities();
+      
+      // Wrap async function calls in try-catch to prevent unhandled promise rejections
+      const initializeUserData = async () => {
+        try {
+          console.log('Loading user data...');
+          await Promise.allSettled([
+            loadChatHistory(),
+            loadConfig(),
+            loadKnowledgeBase(),
+            loadConversationSessions(),
+            loadAIPersonalities()
+          ]);
+          console.log('User data loading completed');
+        } catch (error) {
+          console.error('Error during user data initialization:', error);
+          toast.error('Failed to load some user data');
+        }
+      };
+      
+      initializeUserData();
       
       // Check if user should see onboarding
-      const tourCompleted = localStorage.getItem(`modq_tour_completed_${currentUser.id}`);
-      if (!tourCompleted) {
-        setShowOnboarding(true);
+      try {
+        const tourCompleted = localStorage.getItem(`modq_tour_completed_${currentUser.id}`);
+        if (!tourCompleted) {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
       }
     }
   }, [currentUser]);
