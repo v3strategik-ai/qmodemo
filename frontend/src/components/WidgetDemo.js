@@ -978,27 +978,14 @@ const WidgetDemo = () => {
 
             {/* Brand Customization Tab - Removed */}
 
-            {/* Smart Insights Tab */}
-            <TabsContent value="insights" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <SmartInsightsPanel 
-                    userConfig={config}
-                    chatMessages={messages}
-                  />
-                </div>
-                <div>
-                  <Card className="holographic p-6">
-                    <h3 className="text-lg font-semibold mb-4 text-white">Export & Share</h3>
-                    <ExportCapabilities 
-                      userConfig={config}
-                      chatMessages={messages}
-                      knowledgeItems={knowledgeItems}
-                      insights={[]} // This would come from SmartInsightsPanel in production
-                    />
-                  </Card>
-                </div>
-              </div>
+            {/* Mobile Optimization Tab */}
+            <TabsContent value="mobile" className="mt-6">
+              <MobileOptimization currentUser={currentUser} />
+            </TabsContent>
+
+            {/* API Documentation Tab */}
+            <TabsContent value="api-docs" className="mt-6">
+              <APIDocs currentUser={currentUser} />
             </TabsContent>
 
             {/* Analytics Tab */}
