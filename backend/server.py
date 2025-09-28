@@ -185,6 +185,66 @@ class RateLimiter:
 # Global rate limiter
 rate_limiter = RateLimiter()
 
+# F1: Performance - Request monitoring middleware
+@app.middleware("http")
+async def performance_monitoring_middleware(request, call_next):
+    """Monitor request performance and log metrics"""
+    start_time = time.time()
+    
+    # Get user info if available
+    user_id = None
+    try:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            user_id = payload.get("sub")
+    except:
+        pass
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Calculate metrics
+    process_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+    
+    # Log performance metrics
+    try:
+        metrics = PerformanceMetrics(
+            endpoint=str(request.url.path),
+            method=request.method,
+            response_time_ms=process_time,
+            status_code=response.status_code,
+            user_id=user_id
+        )
+        
+        # Store in background to avoid blocking response
+        asyncio.create_task(db.performance_metrics.insert_one(metrics.dict()))
+        
+        # Add performance headers
+        response.headers["X-Process-Time"] = str(process_time)
+        
+    except Exception as e:
+        logging.warning(f"Performance monitoring failed: {e}")
+    
+    return response
+
+# F3: Security - Rate limiting middleware
+@app.middleware("http")
+async def rate_limiting_middleware(request, call_next):
+    """Apply rate limiting to requests"""
+    # Get client identifier (IP or user ID)
+    client_ip = request.client.host if request.client else "unknown"
+    
+    # Check rate limit
+    if not await rate_limiter.is_allowed(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded. Please try again later."}
+        )
+    
+    return await call_next(request)
+
 # WebSocket endpoint - must be on main app, not API router
 @app.websocket("/ws/chat/{user_id}")
 async def websocket_chat_endpoint(websocket: WebSocket, user_id: str):
