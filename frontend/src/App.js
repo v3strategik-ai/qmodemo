@@ -86,7 +86,7 @@ function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/widget-demo" element={<WidgetDemoMinimal />} />
+              <Route path="/widget-demo" element={<WidgetDemo />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<AdminPortal />} />
               <Route path="*" element={<Navigate to="/" replace />} />
