@@ -100,9 +100,10 @@ const WidgetDemo = () => {
     requestTTS,
     addEventListener: addWSListener,
     removeEventListener: removeWSListener
-  } = useWebSocket(currentUser?.id);
+  // } = useWebSocket(currentUser?.id);
+  } = {};  // Temporarily disable useWebSocket to test if it's causing the issue
   
-  console.log('WidgetDemo - WebSocket hook initialized, connected:', wsConnected);
+  console.log('WidgetDemo - WebSocket hook disabled for debugging');
 
   useEffect(() => {
     console.log('WidgetDemo mounting/updating', { currentUser: !!currentUser, userId: currentUser?.id });
