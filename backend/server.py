@@ -489,6 +489,32 @@ class WorkflowTemplate(BaseModel):
     rating: float = 0.0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# E2: Advanced AI Integration Models
+class AIAgent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    type: str  # sales_agent, support_agent, analytics_agent, custom_agent
+    provider: str = "openai"  # openai, anthropic, gemini
+    model: str = "gpt-4o"  # Model name
+    system_prompt: str
+    temperature: float = 0.7
+    max_tokens: int = 2000
+    capabilities: List[str] = []  # ["lead_qualification", "email_generation", "data_analysis"]
+    user_id: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AIAgentCreate(BaseModel):
+    name: str
+    type: str
+    provider: str = "openai"
+    model: str = "gpt-4o"
+    system_prompt: str
+    temperature: float = 0.7
+    max_tokens: int = 2000
+    capabilities: List[str] = []
+    user_id: str
+
 class WorkflowExecution(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     workflow_id: str
@@ -501,6 +527,8 @@ class WorkflowExecution(BaseModel):
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     execution_time_ms: Optional[int] = None
+    nodes_executed: int = 0
+    nodes_failed: int = 0
 
 class WorkflowMetrics(BaseModel):
     workflow_id: str
