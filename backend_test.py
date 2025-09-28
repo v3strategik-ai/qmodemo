@@ -3345,6 +3345,625 @@ class ModQAPITester:
         
         return False
 
+    # ===== E1 + E2 ENHANCED PLATFORM TESTS =====
+    
+    def test_workflow_node_types(self):
+        """Test GET /api/workflow-node-types - Enhanced workflow node types"""
+        print("\n⚙️ Testing Enhanced Workflow Node Types...")
+        
+        success, response = self.run_test(
+            "Get Enhanced Workflow Node Types",
+            "GET",
+            "workflow-node-types",
+            200
+        )
+        
+        if success and response:
+            node_types = response.get('node_types', [])
+            print(f"   Found {len(node_types)} enhanced node types")
+            
+            # Verify expected enhanced node types exist
+            expected_types = [
+                "trigger", "condition", "ai_response", "database", "api_call", 
+                "loop", "parallel", "timer", "notification", "data_transform", "script"
+            ]
+            
+            found_types = [nt['type'] for nt in node_types]
+            all_found = True
+            
+            for expected_type in expected_types:
+                if expected_type in found_types:
+                    print(f"   ✅ Enhanced node type '{expected_type}' found")
+                else:
+                    print(f"   ❌ Enhanced node type '{expected_type}' missing")
+                    all_found = False
+            
+            # Verify node type structure
+            if node_types:
+                sample_node = node_types[0]
+                required_fields = ['type', 'name', 'description', 'category', 'inputs', 'outputs', 'subtypes']
+                
+                for field in required_fields:
+                    if field in sample_node:
+                        print(f"   ✅ Node type field '{field}' present")
+                    else:
+                        print(f"   ❌ Node type field '{field}' missing")
+                        all_found = False
+            
+            return all_found
+        
+        return False
+
+    def test_workflow_node_types_by_category(self):
+        """Test GET /api/workflow-node-types with category filter"""
+        print("\n📂 Testing Workflow Node Types by Category...")
+        
+        categories = ["core", "ai", "data", "integration", "control", "communication", "advanced"]
+        successful_categories = 0
+        
+        for category in categories:
+            success, response = self.run_test(
+                f"Get Node Types - Category: {category}",
+                "GET",
+                f"workflow-node-types?category={category}",
+                200
+            )
+            
+            if success and response:
+                node_types = response.get('node_types', [])
+                # Verify all returned nodes belong to the requested category
+                if all(nt.get('category') == category for nt in node_types):
+                    successful_categories += 1
+                    print(f"   ✅ Category '{category}': {len(node_types)} nodes")
+                else:
+                    print(f"   ❌ Category '{category}': incorrect filtering")
+            else:
+                print(f"   ❌ Category '{category}': request failed")
+        
+        return successful_categories >= len(categories) // 2
+
+    def test_create_ai_agent(self):
+        """Test POST /api/ai-agents/create - AI agent creation with multi-LLM support"""
+        if not self.test_user_id:
+            print("❌ Skipping AI agent creation test - no user ID available")
+            return False
+        
+        print("\n🤖 Testing AI Agent Creation...")
+        
+        # Test creating agents with different providers
+        test_agents = [
+            {
+                "name": "Sales Assistant Pro",
+                "type": "sales_agent",
+                "provider": "openai",
+                "model": "gpt-4o",
+                "system_prompt": "You are a professional sales assistant specialized in lead qualification and deal closing.",
+                "temperature": 0.7,
+                "max_tokens": 2000,
+                "capabilities": ["lead_qualification", "objection_handling", "deal_closing"],
+                "user_id": self.test_user_id
+            },
+            {
+                "name": "Support Specialist",
+                "type": "support_agent", 
+                "provider": "anthropic",
+                "model": "claude-3-sonnet",
+                "system_prompt": "You are a customer support specialist focused on problem resolution and customer satisfaction.",
+                "temperature": 0.5,
+                "max_tokens": 1500,
+                "capabilities": ["troubleshooting", "customer_service", "technical_support"],
+                "user_id": self.test_user_id
+            },
+            {
+                "name": "Analytics Expert",
+                "type": "analytics_agent",
+                "provider": "gemini",
+                "model": "gemini-pro",
+                "system_prompt": "You are a data analytics expert providing business insights and recommendations.",
+                "temperature": 0.3,
+                "max_tokens": 2500,
+                "capabilities": ["data_analysis", "business_intelligence", "reporting"],
+                "user_id": self.test_user_id
+            }
+        ]
+        
+        created_agents = []
+        successful_creations = 0
+        
+        for agent_data in test_agents:
+            success, response = self.run_test(
+                f"Create AI Agent - {agent_data['name']} ({agent_data['provider']})",
+                "POST",
+                "ai-agents/create",
+                200,
+                data=agent_data
+            )
+            
+            if success and response:
+                created_agents.append(response)
+                successful_creations += 1
+                
+                # Verify response structure
+                required_fields = ['id', 'name', 'type', 'provider', 'model', 'system_prompt', 'user_id', 'created_at']
+                for field in required_fields:
+                    if field in response:
+                        print(f"   ✅ Agent field '{field}' present")
+                    else:
+                        print(f"   ❌ Agent field '{field}' missing")
+                        return False
+                
+                print(f"   ✅ Created {agent_data['name']} with {agent_data['provider']} provider")
+            else:
+                print(f"   ❌ Failed to create {agent_data['name']}")
+        
+        # Store created agents for other tests
+        self.test_ai_agents = created_agents
+        
+        return successful_creations >= 2  # At least 2 out of 3 should succeed
+
+    def test_get_user_ai_agents(self):
+        """Test GET /api/ai-agents/user/{user_id} - Retrieve user's AI agents"""
+        if not self.test_user_id:
+            print("❌ Skipping get user AI agents test - no user ID available")
+            return False
+        
+        print(f"\n📋 Testing Get User AI Agents for user: {self.test_user_id}")
+        
+        success, response = self.run_test(
+            "Get User AI Agents",
+            "GET",
+            f"ai-agents/user/{self.test_user_id}",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} AI agents for user")
+            
+            if len(response) > 0:
+                # Verify agent structure
+                agent = response[0]
+                required_fields = ['id', 'name', 'type', 'provider', 'model', 'user_id']
+                
+                for field in required_fields:
+                    if field in agent:
+                        print(f"   ✅ Agent field '{field}' present")
+                    else:
+                        print(f"   ❌ Agent field '{field}' missing")
+                        return False
+                
+                # Verify multi-LLM provider support
+                providers = set(agent.get('provider') for agent in response)
+                print(f"   ✅ Found agents with providers: {', '.join(providers)}")
+                
+                return True
+            else:
+                print("   ⚠️ No AI agents found for user (may be expected for new user)")
+                return True
+        
+        return False
+
+    def test_chat_with_ai_agent(self):
+        """Test POST /api/ai-agents/{agent_id}/chat - Chat with custom AI agents"""
+        if not hasattr(self, 'test_ai_agents') or not self.test_ai_agents:
+            print("❌ Skipping AI agent chat test - no AI agents available")
+            return False
+        
+        print("\n💬 Testing Chat with AI Agents...")
+        
+        successful_chats = 0
+        
+        for agent in self.test_ai_agents:
+            agent_id = agent.get('id')
+            agent_name = agent.get('name')
+            agent_type = agent.get('type')
+            
+            # Create appropriate test message based on agent type
+            test_messages = {
+                "sales_agent": "I'm interested in your product but concerned about the price. Can you help me understand the value proposition?",
+                "support_agent": "I'm having trouble logging into my account. The password reset isn't working. Can you help?",
+                "analytics_agent": "Can you analyze our Q3 sales data and identify the top 3 trends we should focus on?"
+            }
+            
+            test_message = test_messages.get(agent_type, "Hello, can you help me with my business needs?")
+            
+            success, response = self.run_test(
+                f"Chat with AI Agent - {agent_name}",
+                "POST",
+                f"ai-agents/{agent_id}/chat?user_id={self.test_user_id}&message={test_message}",
+                200
+            )
+            
+            if success and response:
+                successful_chats += 1
+                
+                # Verify response structure
+                required_fields = ['agent_id', 'agent_name', 'agent_type', 'message', 'response', 'response_time_ms']
+                for field in required_fields:
+                    if field in response:
+                        print(f"   ✅ Chat response field '{field}' present")
+                    else:
+                        print(f"   ❌ Chat response field '{field}' missing")
+                        return False
+                
+                print(f"   ✅ Chat with {agent_name} successful")
+                print(f"   Response time: {response.get('response_time_ms', 0)}ms")
+                print(f"   Response preview: {response.get('response', '')[:100]}...")
+            else:
+                print(f"   ❌ Chat with {agent_name} failed")
+        
+        return successful_chats >= len(self.test_ai_agents) // 2
+
+    def test_get_ai_agent_templates(self):
+        """Test GET /api/ai-agents/templates - AI agent templates"""
+        print("\n📋 Testing AI Agent Templates...")
+        
+        success, response = self.run_test(
+            "Get AI Agent Templates",
+            "GET",
+            "ai-agents/templates",
+            200
+        )
+        
+        if success and response:
+            templates = response.get('templates', [])
+            print(f"   Found {len(templates)} AI agent templates")
+            
+            # Verify expected templates exist
+            expected_templates = ["sales-agent-template", "support-agent-template", "analytics-agent-template", "marketing-agent-template"]
+            found_template_ids = [t.get('id') for t in templates]
+            
+            all_found = True
+            for expected_id in expected_templates:
+                if expected_id in found_template_ids:
+                    print(f"   ✅ Template '{expected_id}' found")
+                else:
+                    print(f"   ❌ Template '{expected_id}' missing")
+                    all_found = False
+            
+            # Verify template structure
+            if templates:
+                template = templates[0]
+                required_fields = ['id', 'name', 'type', 'description', 'system_prompt', 'capabilities', 'recommended_model']
+                
+                for field in required_fields:
+                    if field in template:
+                        print(f"   ✅ Template field '{field}' present")
+                    else:
+                        print(f"   ❌ Template field '{field}' missing")
+                        all_found = False
+            
+            return all_found
+        
+        return False
+
+    def test_ai_agent_crud_operations(self):
+        """Test AI agent CRUD operations (create, read, update, delete)"""
+        if not self.test_user_id:
+            print("❌ Skipping AI agent CRUD test - no user ID available")
+            return False
+        
+        print("\n🔄 Testing AI Agent CRUD Operations...")
+        
+        # Create a test agent
+        agent_data = {
+            "name": "Test CRUD Agent",
+            "type": "custom_agent",
+            "provider": "openai",
+            "model": "gpt-4o",
+            "system_prompt": "You are a test agent for CRUD operations.",
+            "temperature": 0.5,
+            "max_tokens": 1000,
+            "capabilities": ["testing", "crud_operations"],
+            "user_id": self.test_user_id
+        }
+        
+        # CREATE
+        create_success, create_response = self.run_test(
+            "CRUD - Create AI Agent",
+            "POST",
+            "ai-agents/create",
+            200,
+            data=agent_data
+        )
+        
+        if not create_success or not create_response:
+            print("   ❌ Failed to create agent for CRUD test")
+            return False
+        
+        agent_id = create_response.get('id')
+        print(f"   ✅ Created agent with ID: {agent_id}")
+        
+        # READ
+        read_success, read_response = self.run_test(
+            "CRUD - Read AI Agent",
+            "GET",
+            f"ai-agents/{agent_id}?user_id={self.test_user_id}",
+            200
+        )
+        
+        if not read_success or read_response.get('id') != agent_id:
+            print("   ❌ Failed to read created agent")
+            return False
+        
+        print("   ✅ Successfully read agent")
+        
+        # UPDATE
+        update_data = {
+            "name": "Updated CRUD Agent",
+            "type": "custom_agent",
+            "provider": "openai",
+            "model": "gpt-4o",
+            "system_prompt": "You are an updated test agent for CRUD operations.",
+            "temperature": 0.7,
+            "max_tokens": 1500,
+            "capabilities": ["testing", "crud_operations", "updated"],
+            "user_id": self.test_user_id
+        }
+        
+        update_success, update_response = self.run_test(
+            "CRUD - Update AI Agent",
+            "PUT",
+            f"ai-agents/{agent_id}",
+            200,
+            data=update_data
+        )
+        
+        if not update_success or update_response.get('name') != "Updated CRUD Agent":
+            print("   ❌ Failed to update agent")
+            return False
+        
+        print("   ✅ Successfully updated agent")
+        
+        # DELETE
+        delete_success, delete_response = self.run_test(
+            "CRUD - Delete AI Agent",
+            "DELETE",
+            f"ai-agents/{agent_id}?user_id={self.test_user_id}",
+            200
+        )
+        
+        if not delete_success or delete_response.get('status') != 'success':
+            print("   ❌ Failed to delete agent")
+            return False
+        
+        print("   ✅ Successfully deleted agent")
+        
+        # Verify deletion
+        verify_success, verify_response = self.run_test(
+            "CRUD - Verify Deletion",
+            "GET",
+            f"ai-agents/{agent_id}?user_id={self.test_user_id}",
+            404  # Should return 404 after deletion
+        )
+        
+        if verify_success:
+            print("   ✅ Agent deletion verified (404 response)")
+            return True
+        else:
+            print("   ❌ Agent deletion not verified")
+            return False
+
+    def test_enhanced_workflow_execution(self):
+        """Test enhanced workflow execution with advanced node types"""
+        if not self.test_user_id:
+            print("❌ Skipping enhanced workflow execution test - no user ID available")
+            return False
+        
+        print("\n⚙️ Testing Enhanced Workflow Execution...")
+        
+        # Create a workflow with enhanced node types
+        enhanced_workflow_data = {
+            "user_id": self.test_user_id,
+            "name": "Enhanced Test Workflow",
+            "description": "Testing enhanced workflow with advanced node types",
+            "category": "automation"
+        }
+        
+        # Create workflow
+        create_success, create_response = self.run_test(
+            "Create Enhanced Workflow",
+            "POST",
+            "workflows/create",
+            200,
+            data=enhanced_workflow_data
+        )
+        
+        if not create_success or not create_response:
+            print("   ❌ Failed to create enhanced workflow")
+            return False
+        
+        workflow_id = create_response.get('id')
+        print(f"   ✅ Created enhanced workflow with ID: {workflow_id}")
+        
+        # Execute workflow with enhanced trigger data
+        execute_data = {
+            "workflow_id": workflow_id,
+            "user_id": self.test_user_id,
+            "trigger_data": {
+                "trigger_type": "api_event",
+                "data": {
+                    "customer_id": "cust_123",
+                    "event": "purchase_completed",
+                    "amount": 299.99,
+                    "product": "Premium Plan"
+                },
+                "enhanced_features": {
+                    "ai_processing": True,
+                    "parallel_execution": True,
+                    "data_transformation": True
+                }
+            }
+        }
+        
+        execute_success, execute_response = self.run_test(
+            "Execute Enhanced Workflow",
+            "POST",
+            "workflows/execute",
+            200,
+            data=execute_data
+        )
+        
+        if execute_success and execute_response:
+            execution_id = execute_response.get('id')
+            print(f"   ✅ Enhanced workflow execution started: {execution_id}")
+            
+            # Verify enhanced execution response
+            required_fields = ['id', 'workflow_id', 'status', 'trigger_data', 'started_at']
+            for field in required_fields:
+                if field in execute_response:
+                    print(f"   ✅ Execution field '{field}' present")
+                else:
+                    print(f"   ❌ Execution field '{field}' missing")
+                    return False
+            
+            return True
+        
+        return False
+
+    def test_workflow_analytics_enhanced_metrics(self):
+        """Test workflow analytics with enhanced metrics (nodes_executed, nodes_failed)"""
+        if not hasattr(self, 'test_workflow_id'):
+            print("❌ Skipping enhanced workflow analytics test - no workflow ID available")
+            return False
+        
+        print("\n📊 Testing Enhanced Workflow Analytics...")
+        
+        # Get enhanced workflow metrics
+        success, response = self.run_test(
+            "Get Enhanced Workflow Metrics",
+            "GET",
+            f"workflows/{self.test_workflow_id}/metrics",
+            200
+        )
+        
+        if success and response:
+            # Verify enhanced metrics fields
+            enhanced_fields = [
+                'workflow_id', 'total_executions', 'successful_executions', 'failed_executions',
+                'average_execution_time_ms', 'success_rate'
+            ]
+            
+            all_fields_present = True
+            for field in enhanced_fields:
+                if field in response:
+                    print(f"   ✅ Enhanced metric '{field}' present: {response[field]}")
+                else:
+                    print(f"   ❌ Enhanced metric '{field}' missing")
+                    all_fields_present = False
+            
+            # Check for enhanced node metrics (may not be present in all implementations)
+            enhanced_node_fields = ['nodes_executed', 'nodes_failed']
+            for field in enhanced_node_fields:
+                if field in response:
+                    print(f"   ✅ Enhanced node metric '{field}' present: {response[field]}")
+                else:
+                    print(f"   ⚠️ Enhanced node metric '{field}' not implemented yet")
+            
+            return all_fields_present
+        
+        return False
+
+    def test_emergent_llm_integration(self):
+        """Test emergentintegrations library functionality with Emergent LLM Key"""
+        print("\n🔗 Testing Emergent LLM Integration...")
+        
+        # Test AI chat with Emergent LLM Key
+        if not self.test_user_id:
+            print("❌ Skipping Emergent LLM test - no user ID available")
+            return False
+        
+        chat_data = {
+            "user_id": self.test_user_id,
+            "message": "Test message for Emergent LLM integration. Please respond with a brief acknowledgment."
+        }
+        
+        success, response = self.run_test(
+            "Test Emergent LLM Integration",
+            "POST",
+            "chat",
+            200,
+            data=chat_data
+        )
+        
+        if success and response:
+            ai_response = response.get('response', '')
+            if ai_response and len(ai_response) > 10:  # Basic validation
+                print(f"   ✅ Emergent LLM integration working")
+                print(f"   Response preview: {ai_response[:100]}...")
+                return True
+            else:
+                print(f"   ❌ Emergent LLM integration failed - empty or invalid response")
+                return False
+        
+        return False
+
+    def run_e1_e2_tests(self):
+        """Run E1 + E2 Enhanced Platform tests"""
+        print("\n" + "="*60)
+        print("🚀 E1 + E2 ENHANCED PLATFORM TESTING")
+        print("="*60)
+        
+        # E1: Enhanced Workflow Automation Testing
+        print("\n" + "="*50)
+        print("⚙️ E1: ENHANCED WORKFLOW AUTOMATION")
+        print("="*50)
+        
+        e1_tests = [
+            self.test_workflow_node_types,
+            self.test_workflow_node_types_by_category,
+            self.test_enhanced_workflow_execution,
+            self.test_workflow_analytics_enhanced_metrics
+        ]
+        
+        e1_passed = 0
+        for test in e1_tests:
+            if test():
+                e1_passed += 1
+        
+        print(f"\n📊 E1 Results: {e1_passed}/{len(e1_tests)} tests passed")
+        
+        # E2: Advanced AI Integration Testing
+        print("\n" + "="*50)
+        print("🤖 E2: ADVANCED AI INTEGRATION")
+        print("="*50)
+        
+        e2_tests = [
+            self.test_create_ai_agent,
+            self.test_get_user_ai_agents,
+            self.test_chat_with_ai_agent,
+            self.test_get_ai_agent_templates,
+            self.test_ai_agent_crud_operations,
+            self.test_emergent_llm_integration
+        ]
+        
+        e2_passed = 0
+        for test in e2_tests:
+            if test():
+                e2_passed += 1
+        
+        print(f"\n📊 E2 Results: {e2_passed}/{len(e2_tests)} tests passed")
+        
+        # Overall E1 + E2 Results
+        total_tests = len(e1_tests) + len(e2_tests)
+        total_passed = e1_passed + e2_passed
+        
+        print(f"\n" + "="*60)
+        print("📊 E1 + E2 OVERALL RESULTS")
+        print("="*60)
+        print(f"E1 (Enhanced Workflow): {e1_passed}/{len(e1_tests)} tests passed")
+        print(f"E2 (Advanced AI Integration): {e2_passed}/{len(e2_tests)} tests passed")
+        print(f"Total E1 + E2: {total_passed}/{total_tests} tests passed")
+        print(f"Success Rate: {(total_passed / total_tests * 100):.1f}%")
+        
+        if total_passed == total_tests:
+            print("🎉 ALL E1 + E2 TESTS PASSED! Enhanced Platform is fully functional.")
+        elif total_passed / total_tests >= 0.8:
+            print("✅ Most E1 + E2 tests passed. Enhanced Platform is largely functional.")
+        else:
+            print("⚠️ Several E1 + E2 tests failed. Enhanced Platform needs attention.")
+        
+        return total_passed, total_tests
+
 def main():
     print("🚀 Starting modQ Voice Features Backend Testing")
     print("=" * 70)
