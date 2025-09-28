@@ -198,7 +198,7 @@ async def performance_monitoring_middleware(request, call_next):
             token = auth_header.split(" ")[1]
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             user_id = payload.get("sub")
-    except:
+    except Exception:
         pass
     
     # Process request
