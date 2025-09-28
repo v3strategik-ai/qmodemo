@@ -79,8 +79,8 @@ class OptionDBetaTestingTester:
             data=user_data
         )
         
-        if success and 'id' in response:
-            self.test_user_id = response['id']
+        if success and 'user_id' in response:
+            self.test_user_id = response['user_id']
             print(f"   Created beta test user with ID: {self.test_user_id}")
             return True
         return False
