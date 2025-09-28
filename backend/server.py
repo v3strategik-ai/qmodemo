@@ -2690,23 +2690,49 @@ async def execute_workflow(execution_request: WorkflowExecuteRequest):
         
         await db.workflow_executions.insert_one(execution.dict())
         
-        # Simulate execution (in production, this would be a background task)
-        import asyncio
-        await asyncio.sleep(1)  # Simulate processing time
+        # Enhanced execution engine for advanced node types
+        execution_start = datetime.now()
+        execution_path = []
+        execution_results = {}
+        nodes_executed = 0
+        nodes_failed = 0
+        
+        try:
+            # Process nodes in execution order (simplified for demo)
+            for node in workflow.get("nodes", []):
+                node_start = datetime.now()
+                execution_path.append(node["id"])
+                
+                # Execute node based on type
+                node_result = await execute_workflow_node(node, execution_request.input_data)
+                execution_results[node["id"]] = node_result
+                
+                if node_result.get("status") == "success":
+                    nodes_executed += 1
+                else:
+                    nodes_failed += 1
+                
+                node_duration = (datetime.now() - node_start).total_seconds() * 1000
+                logging.info(f"Node {node['id']} ({node.get('type')}) executed in {node_duration}ms")
+        
+        except Exception as node_error:
+            logging.error(f"Node execution error: {str(node_error)}")
+            nodes_failed += 1
+        
+        execution_duration = (datetime.now() - execution_start).total_seconds() * 1000
         
         # Update execution as completed
-        execution_path = [node["id"] for node in workflow.get("nodes", [])]
-        results = {"message": "Workflow executed successfully", "nodes_processed": len(execution_path)}
-        
         await db.workflow_executions.update_one(
             {"id": execution.id},
             {
                 "$set": {
                     "status": "completed",
                     "execution_path": execution_path,
-                    "results": results,
+                    "results": execution_results,
                     "completed_at": datetime.now(timezone.utc),
-                    "execution_time_ms": 1000
+                    "execution_time_ms": int(execution_duration),
+                    "nodes_executed": nodes_executed,
+                    "nodes_failed": nodes_failed
                 }
             }
         )
