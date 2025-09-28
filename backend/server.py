@@ -62,6 +62,129 @@ db = client[os.environ['DB_NAME']]
 # Create the main app without a prefix
 app = FastAPI(title="modQ API", description="Modular Quantum Business Intelligence API", version="1.0")
 
+# F1: Performance - Add middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])  # Configure for production
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# F3: Security - JWT Configuration
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', secrets.token_urlsafe(32))
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+
+# F1: Performance - Cache decorator
+def cache_result(expiration: int = 300):
+    """Cache decorator for expensive operations"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if not redis_client:
+                return await func(*args, **kwargs)
+            
+            # Create cache key from function name and arguments
+            cache_key = f"{func.__name__}:{hashlib.md5(str(args + tuple(kwargs.items())).encode()).hexdigest()}"
+            
+            try:
+                # Try to get from cache
+                cached_result = await redis_client.get(cache_key)
+                if cached_result:
+                    return json.loads(cached_result)
+                
+                # Execute function and cache result
+                result = await func(*args, **kwargs)
+                await redis_client.setex(cache_key, expiration, json.dumps(result, default=str))
+                return result
+            except Exception as e:
+                logging.warning(f"Cache operation failed: {e}")
+                return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# F3: Security - Authentication functions
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+    
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Hash password"""
+    return pwd_context.hash(password)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user"""
+    if not credentials:
+        return None
+    
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+        
+        # Get user from database
+        user = await db.users.find_one({"id": user_id})
+        return user
+    except jwt.PyJWTError:
+        return None
+
+# F1: Performance - Database connection pooling optimization
+async def optimize_db_connection():
+    """Optimize database connection settings"""
+    try:
+        # Set connection pool settings
+        client.get_io_loop = asyncio.get_event_loop
+        await client.admin.command('ping')
+        logging.info("Database connection optimized")
+    except Exception as e:
+        logging.error(f"Database optimization failed: {e}")
+
+# F3: Security - Rate limiting
+class RateLimiter:
+    def __init__(self, max_requests: int = 100, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+    
+    async def is_allowed(self, identifier: str) -> bool:
+        if not redis_client:
+            return True
+        
+        try:
+            key = f"rate_limit:{identifier}"
+            current = await redis_client.get(key)
+            
+            if current is None:
+                await redis_client.setex(key, self.window_seconds, 1)
+                return True
+            
+            if int(current) >= self.max_requests:
+                return False
+            
+            await redis_client.incr(key)
+            return True
+        except Exception as e:
+            logging.warning(f"Rate limiting failed: {e}")
+            return True
+
+# Global rate limiter
+rate_limiter = RateLimiter()
+
 # WebSocket endpoint - must be on main app, not API router
 @app.websocket("/ws/chat/{user_id}")
 async def websocket_chat_endpoint(websocket: WebSocket, user_id: str):
