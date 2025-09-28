@@ -1040,6 +1040,49 @@ const WidgetDemo = () => {
               <WorkflowBuilder currentUser={currentUser} />
             </TabsContent>
 
+            {/* Beta Testing Tab */}
+            <TabsContent value="beta-testing" className="mt-6">
+              <div className="space-y-6">
+                {/* Role Switcher */}
+                <Card className="holographic p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-white">Beta Testing Dashboard</h3>
+                  <RoleSwitcher 
+                    currentRole={currentRole}
+                    onRoleChange={setCurrentRole}
+                  />
+                </Card>
+
+                {/* Guided Tours */}
+                <Card className="holographic p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-white">Feature Tours</h3>
+                    <Switch 
+                      checked={showTours}
+                      onCheckedChange={setShowTours}
+                    />
+                  </div>
+                  {showTours && (
+                    <GuidedTour 
+                      currentUser={currentUser}
+                      onComplete={() => console.log('Tour completed')}
+                    />
+                  )}
+                </Card>
+
+                {/* Beta Analytics */}
+                <Card className="holographic p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-white">Beta Analytics</h3>
+                  <BetaAnalyticsDashboard currentUser={currentUser} />
+                </Card>
+
+                {/* Feedback Widget */}
+                <Card className="holographic p-6">
+                  <h3 className="text-xl font-semibold mb-4 text-white">Feedback</h3>
+                  <FeedbackButton />
+                </Card>
+              </div>
+            </TabsContent>
+
             {/* AI Agent Manager Tab */}
             <TabsContent value="ai-agents" className="mt-6">
               {/* <AIAgentManager currentUser={currentUser} /> */}
