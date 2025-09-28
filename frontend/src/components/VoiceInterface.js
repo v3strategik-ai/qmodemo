@@ -7,6 +7,7 @@ import { Switch } from './ui/switch';
 import { Slider } from './ui/slider';
 import { Mic, MicOff, Volume2, VolumeX, Play, Pause, Square } from 'lucide-react';
 import { toast } from 'sonner';
+import { FeedbackButton } from './FeedbackWidget';
 
 const VoiceInterface = ({ 
   currentUser, 
