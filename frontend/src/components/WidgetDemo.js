@@ -27,8 +27,8 @@ import TeamCollaboration from './TeamCollaboration';
 // import BrandCustomization from './BrandCustomization'; // Removed
 import WorkflowBuilder from './WorkflowBuilder';
 import AIAgentManager from './AIAgentManager';
-import IntegrationMarketplaceAdvanced from './IntegrationMarketplaceAdvanced';
-import AdvancedAnalyticsDashboard from './AdvancedAnalyticsDashboard';
+// import IntegrationMarketplaceAdvanced from './IntegrationMarketplaceAdvanced';
+// import AdvancedAnalyticsDashboard from './AdvancedAnalyticsDashboard';
 // import MobileOptimization from './MobileOptimization';
 // import APIDocs from './APIDocs';
 import useWebSocket from '../hooks/useWebSocket';
