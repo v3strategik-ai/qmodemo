@@ -273,6 +273,11 @@ const WidgetDemo = () => {
   };
 
   const loadConversationSessions = async () => {
+    if (!currentUser?.id) {
+      console.warn('Cannot load conversation sessions: currentUser not available');
+      return;
+    }
+    
     try {
       const response = await axios.get(`${API}/sessions/${currentUser.id}`);
       setConversationSessions(response.data);
