@@ -730,7 +730,6 @@ async def handle_streaming_chat(message_data: Dict, user_id: str, session_id: st
         }, user_id, session_id)
         
         # Initialize streaming LLM chat
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         chat = LlmChat(
             api_key=os.environ.get('EMERGENT_LLM_KEY'),
