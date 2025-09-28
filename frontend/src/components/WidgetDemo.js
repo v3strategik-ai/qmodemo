@@ -331,6 +331,11 @@ const WidgetDemo = () => {
   };
 
   const loadConfig = async () => {
+    if (!currentUser?.id) {
+      console.warn('Cannot load config: currentUser not available');
+      return;
+    }
+    
     try {
       const response = await axios.get(`${API}/widget/config/${currentUser.id}`);
       setConfig(response.data);
