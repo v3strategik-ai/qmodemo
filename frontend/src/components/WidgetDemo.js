@@ -94,6 +94,10 @@ const WidgetDemo = () => {
   const [knowledgeItems, setKnowledgeItems] = useState([]);
   const [newKbTitle, setNewKbTitle] = useState('');
   const [newKbContent, setNewKbContent] = useState('');
+  
+  // Beta Testing Features State
+  const [currentRole, setCurrentRole] = useState(null);
+  const [showTours, setShowTours] = useState(true);
 
   // WebSocket connection
   const {
