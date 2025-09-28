@@ -101,7 +101,15 @@ const WidgetDemo = () => {
     addEventListener: addWSListener,
     removeEventListener: removeWSListener
   // } = useWebSocket(currentUser?.id);
-  } = {};  // Temporarily disable useWebSocket to test if it's causing the issue
+  // Temporarily disable useWebSocket to test if it's causing the issue
+  const wsConnected = false;
+  const wsConnecting = false;
+  const wsSessionId = null;
+  const sendChatMessage = () => {};
+  const sendVoiceTranscription = () => {};
+  const requestTTS = () => {};
+  const addWSListener = () => {};
+  const removeWSListener = () => {};
   
   console.log('WidgetDemo - WebSocket hook disabled for debugging');
 
