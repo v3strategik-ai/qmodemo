@@ -968,12 +968,18 @@ const WidgetDemo = () => {
 
             {/* Integration Marketplace Advanced Tab */}
             <TabsContent value="integrations" className="mt-6">
-              <IntegrationMarketplaceAdvanced currentUser={currentUser} />
+              {/* <IntegrationMarketplaceAdvanced currentUser={currentUser} /> */}
+              <div className="p-6 text-center text-gray-400">
+                Advanced Integration Marketplace temporarily disabled for debugging
+              </div>
             </TabsContent>
 
             {/* Advanced Analytics Dashboard Tab */}
             <TabsContent value="analytics" className="mt-6">
-              <AdvancedAnalyticsDashboard currentUser={currentUser} />
+              {/* <AdvancedAnalyticsDashboard currentUser={currentUser} /> */}
+              <div className="p-6 text-center text-gray-400">
+                Advanced Analytics Dashboard temporarily disabled for debugging
+              </div>
             </TabsContent>
 
             {/* Brand Customization Tab - Removed */}
