@@ -10,13 +10,8 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Only catch actual render errors, not warnings or non-critical errors
-    if (error && error.name && (error.name.includes('ChunkLoadError') || error.name.includes('ReferenceError') || error.name.includes('TypeError'))) {
-      return { hasError: true };
-    }
-    
-    // For other types of errors, log but don't show error boundary
-    console.warn('ErrorBoundary ignoring non-critical error:', error);
+    // Temporarily disable error boundary UI - just log errors
+    console.error('ErrorBoundary caught error (not showing UI):', error);
     return { hasError: false };
   }
 
