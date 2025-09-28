@@ -29,8 +29,8 @@ import WorkflowBuilder from './WorkflowBuilder';
 import AIAgentManager from './AIAgentManager';
 import IntegrationMarketplaceAdvanced from './IntegrationMarketplaceAdvanced';
 import AdvancedAnalyticsDashboard from './AdvancedAnalyticsDashboard';
-import MobileOptimization from './MobileOptimization';
-import APIDocs from './APIDocs';
+// import MobileOptimization from './MobileOptimization';
+// import APIDocs from './APIDocs';
 import useWebSocket from '../hooks/useWebSocket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
