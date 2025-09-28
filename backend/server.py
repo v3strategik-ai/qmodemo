@@ -248,6 +248,69 @@ class User(BaseModel):
     role: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_demo: bool = False
+    password_hash: Optional[str] = None  # F3: Security - Add password field
+    last_login: Optional[datetime] = None
+    is_active: bool = True
+    failed_login_attempts: int = 0
+    locked_until: Optional[datetime] = None
+
+# F3: Security - Authentication Models
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserRegister(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str = "employee"
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    user_id: str
+
+class PasswordReset(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+# F3: Security - Session Management
+class UserSession(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    token: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+    is_active: bool = True
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+
+# F1: Performance - Analytics Models
+class PerformanceMetrics(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    endpoint: str
+    method: str
+    response_time_ms: float
+    status_code: int
+    user_id: Optional[str] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    memory_usage_mb: Optional[float] = None
+    cpu_usage_percent: Optional[float] = None
+
+class CacheMetrics(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    cache_key: str
+    hit: bool
+    execution_time_ms: float
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ConversationSession(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
