@@ -506,6 +506,111 @@ class AIAgent(BaseModel):
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# E3: Custom Integration Marketplace Models
+class CustomIntegration(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    category: str  # api, webhook, database, file_processing, notification, custom
+    version: str = "1.0.0"
+    author: str
+    author_id: str
+    configuration_schema: Dict[str, Any] = {}  # JSON schema for configuration
+    code: str  # Integration code/script
+    language: str = "python"  # python, javascript, sql
+    requirements: List[str] = []  # Dependencies
+    endpoints: List[Dict[str, Any]] = []  # API endpoints this integration provides
+    pricing_model: str = "free"  # free, paid, freemium
+    price: float = 0.0
+    install_count: int = 0
+    rating: float = 0.0
+    review_count: int = 0
+    is_verified: bool = False
+    is_active: bool = True
+    tags: List[str] = []
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class IntegrationInstall(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    integration_id: str
+    user_id: str
+    configuration: Dict[str, Any] = {}
+    is_active: bool = True
+    install_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used: Optional[datetime] = None
+    usage_count: int = 0
+
+class IntegrationReview(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    integration_id: str
+    user_id: str
+    rating: int  # 1-5 stars
+    review: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# E4: Advanced Analytics & Reporting Models
+class AnalyticsDashboard(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    user_id: str
+    team_id: Optional[str] = None
+    layout: Dict[str, Any] = {}  # Dashboard layout configuration
+    widgets: List[Dict[str, Any]] = []  # Dashboard widgets
+    filters: Dict[str, Any] = {}  # Global filters
+    refresh_interval: int = 300  # Auto-refresh interval in seconds
+    is_public: bool = False
+    is_favorite: bool = False
+    view_count: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ReportTemplate(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    type: str  # pdf, excel, powerpoint, html, csv
+    template_data: Dict[str, Any] = {}  # Template configuration
+    parameters: List[Dict[str, Any]] = []  # Report parameters
+    schedule: Optional[Dict[str, Any]] = None  # Scheduled report configuration
+    recipients: List[str] = []  # Email recipients
+    user_id: str
+    is_active: bool = True
+    last_generated: Optional[datetime] = None
+    generation_count: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AnalyticsKPI(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    calculation: str  # SQL query or calculation formula
+    target_value: Optional[float] = None
+    unit: Optional[str] = None
+    category: str = "general"  # sales, marketing, support, finance, operations
+    frequency: str = "daily"  # hourly, daily, weekly, monthly
+    threshold_config: Dict[str, Any] = {}  # Alert thresholds
+    user_id: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PredictiveModel(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    model_type: str  # classification, regression, clustering, forecasting
+    algorithm: str  # random_forest, linear_regression, neural_network, etc.
+    features: List[str] = []  # Input features
+    target: Optional[str] = None  # Target variable for supervised learning
+    model_data: Dict[str, Any] = {}  # Serialized model and metadata
+    accuracy_metrics: Dict[str, Any] = {}  # Model performance metrics
+    training_data_size: int = 0
+    last_trained: Optional[datetime] = None
+    is_production: bool = False
+    user_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class AIAgentCreate(BaseModel):
     name: str
     type: str
