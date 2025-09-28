@@ -3360,6 +3360,217 @@ async def get_ai_agent_templates():
     
     return {"templates": templates}
 
+# E3: Custom Integration Marketplace - Integration Management
+@api_router.post("/integrations/marketplace/create", response_model=CustomIntegration)
+async def create_custom_integration(integration_data: CustomIntegrationCreate):
+    """Create a new custom integration"""
+    try:
+        integration = CustomIntegration(
+            **integration_data.dict(),
+            author=f"User {integration_data.author_id}"  # In production, get actual username
+        )
+        await db.custom_integrations.insert_one(integration.dict())
+        
+        logging.info(f"Custom integration '{integration.name}' created by user {integration_data.author_id}")
+        return integration
+        
+    except Exception as e:
+        logging.error(f"Create custom integration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create custom integration")
+
+@api_router.get("/integrations/marketplace", response_model=List[CustomIntegration])
+async def get_marketplace_integrations(category: Optional[str] = None, search: Optional[str] = None, limit: int = 50):
+    """Get available integrations from marketplace"""
+    try:
+        query = {"is_active": True}
+        
+        if category:
+            query["category"] = category
+        
+        integrations = await db.custom_integrations.find(query).limit(limit).to_list(limit)
+        
+        # Filter by search term if provided
+        if search:
+            search_term = search.lower()
+            integrations = [
+                integration for integration in integrations
+                if search_term in integration.get("name", "").lower() or 
+                   search_term in integration.get("description", "").lower() or
+                   any(search_term in tag.lower() for tag in integration.get("tags", []))
+            ]
+        
+        return [CustomIntegration(**integration) for integration in integrations]
+        
+    except Exception as e:
+        logging.error(f"Get marketplace integrations error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get marketplace integrations")
+
+@api_router.get("/integrations/marketplace/{integration_id}", response_model=CustomIntegration)
+async def get_integration_details(integration_id: str):
+    """Get detailed information about a specific integration"""
+    try:
+        integration = await db.custom_integrations.find_one({"id": integration_id})
+        if not integration:
+            raise HTTPException(status_code=404, detail="Integration not found")
+        
+        # Increment view count
+        await db.custom_integrations.update_one(
+            {"id": integration_id},
+            {"$inc": {"view_count": 1}}
+        )
+        
+        return CustomIntegration(**integration)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get integration details error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get integration details")
+
+@api_router.post("/integrations/marketplace/install", response_model=IntegrationInstall)
+async def install_integration(install_request: IntegrationInstallRequest):
+    """Install an integration for a user"""
+    try:
+        # Check if integration exists
+        integration = await db.custom_integrations.find_one({"id": install_request.integration_id})
+        if not integration:
+            raise HTTPException(status_code=404, detail="Integration not found")
+        
+        # Check if already installed
+        existing_install = await db.integration_installs.find_one({
+            "integration_id": install_request.integration_id,
+            "user_id": install_request.user_id
+        })
+        
+        if existing_install:
+            raise HTTPException(status_code=400, detail="Integration already installed")
+        
+        # Create installation record
+        install = IntegrationInstall(**install_request.dict())
+        await db.integration_installs.insert_one(install.dict())
+        
+        # Update integration install count
+        await db.custom_integrations.update_one(
+            {"id": install_request.integration_id},
+            {"$inc": {"install_count": 1}}
+        )
+        
+        logging.info(f"Integration {install_request.integration_id} installed for user {install_request.user_id}")
+        return install
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Install integration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to install integration")
+
+@api_router.get("/integrations/user/{user_id}/installed", response_model=List[IntegrationInstall])
+async def get_user_installed_integrations(user_id: str):
+    """Get integrations installed by a user"""
+    try:
+        installs = await db.integration_installs.find(
+            {"user_id": user_id, "is_active": True}
+        ).to_list(length=None)
+        
+        return [IntegrationInstall(**install) for install in installs]
+        
+    except Exception as e:
+        logging.error(f"Get user installed integrations error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get user integrations")
+
+@api_router.post("/integrations/marketplace/{integration_id}/review", response_model=IntegrationReview)
+async def create_integration_review(integration_id: str, review_data: IntegrationReviewCreate):
+    """Create a review for an integration"""
+    try:
+        # Verify integration exists
+        integration = await db.custom_integrations.find_one({"id": integration_id})
+        if not integration:
+            raise HTTPException(status_code=404, detail="Integration not found")
+        
+        # Create review
+        review = IntegrationReview(
+            integration_id=integration_id,
+            **review_data.dict(exclude={"integration_id"})
+        )
+        await db.integration_reviews.insert_one(review.dict())
+        
+        # Update integration rating
+        reviews = await db.integration_reviews.find({"integration_id": integration_id}).to_list(length=None)
+        avg_rating = sum(r["rating"] for r in reviews) / len(reviews)
+        
+        await db.custom_integrations.update_one(
+            {"id": integration_id},
+            {
+                "$set": {"rating": round(avg_rating, 1)},
+                "$inc": {"review_count": 1}
+            }
+        )
+        
+        logging.info(f"Review created for integration {integration_id}")
+        return review
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Create integration review error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create review")
+
+@api_router.get("/integrations/marketplace/categories")
+async def get_integration_categories():
+    """Get available integration categories"""
+    categories = [
+        {
+            "id": "api",
+            "name": "API Integrations",
+            "description": "Connect to external APIs and services",
+            "icon": "api"
+        },
+        {
+            "id": "webhook",
+            "name": "Webhooks",
+            "description": "Receive real-time notifications from external systems",
+            "icon": "webhook"
+        },
+        {
+            "id": "database",
+            "name": "Database Connectors",
+            "description": "Connect to various database systems",
+            "icon": "database"
+        },
+        {
+            "id": "file_processing",
+            "name": "File Processing",
+            "description": "Process and transform various file formats",
+            "icon": "file"
+        },
+        {
+            "id": "notification",
+            "name": "Notifications",
+            "description": "Send notifications via email, SMS, or messaging platforms",
+            "icon": "bell"
+        },
+        {
+            "id": "analytics",
+            "name": "Analytics",
+            "description": "Custom analytics and reporting integrations",
+            "icon": "chart"
+        },
+        {
+            "id": "ai_ml",
+            "name": "AI & Machine Learning",
+            "description": "AI and ML model integrations",
+            "icon": "brain"
+        },
+        {
+            "id": "custom",
+            "name": "Custom",
+            "description": "Custom business logic and workflows",
+            "icon": "code"
+        }
+    ]
+    
+    return {"categories": categories}
+
 # Analytics routes for admin
 @api_router.get("/admin/analytics")
 async def get_admin_analytics():
