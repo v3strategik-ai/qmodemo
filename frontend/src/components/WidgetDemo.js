@@ -59,6 +59,7 @@ const WidgetDemo = () => {
   const [authMode, setAuthMode] = useState('register');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   
   // Chat state
   const [messages, setMessages] = useState([]);
