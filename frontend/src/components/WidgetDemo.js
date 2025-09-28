@@ -12,21 +12,20 @@ import { Switch } from './ui/switch';
 import { ArrowLeft, Bot, Send, Settings, Upload, Zap, Brain, MessageSquare, FileText, Sparkles, BarChart3, Target, Mic, Volume2, Users, Workflow, Layers, Smartphone, Code } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
-// Temporarily commenting out imports to isolate error
-// import OnboardingTour from './OnboardingTour';
-// import AIResponseRating from './AIResponseRating';
-// import ConversationStarters from './ConversationStarters';
-// import VisualAnalyticsDashboard from './VisualAnalyticsDashboard';
-// import FileUploadZone from './FileUploadZone';
-// import SmartInsightsPanel from './SmartInsightsPanel';
-// import ProgressTracker from './ProgressTracker';
-// import ExportCapabilities from './ExportCapabilities';
-// import AchievementSystem from './AchievementSystem';
-// import VoiceInterface from './VoiceInterface';
-// import IntegrationMarketplace from './IntegrationMarketplace';
-// import TeamCollaboration from './TeamCollaboration';
+import OnboardingTour from './OnboardingTour';
+import AIResponseRating from './AIResponseRating';
+import ConversationStarters from './ConversationStarters';
+import VisualAnalyticsDashboard from './VisualAnalyticsDashboard';
+import FileUploadZone from './FileUploadZone';
+import SmartInsightsPanel from './SmartInsightsPanel';
+import ProgressTracker from './ProgressTracker';
+import ExportCapabilities from './ExportCapabilities';
+// import AchievementSystem from './AchievementSystem'; // Keeping this one commented for now
+import VoiceInterface from './VoiceInterface';
+import IntegrationMarketplace from './IntegrationMarketplace';
+import TeamCollaboration from './TeamCollaboration';
 // import BrandCustomization from './BrandCustomization'; // Removed
-// import WorkflowBuilder from './WorkflowBuilder';
+import WorkflowBuilder from './WorkflowBuilder';
 // import AIAgentManager from './AIAgentManager';
 // import IntegrationMarketplaceAdvanced from './IntegrationMarketplaceAdvanced';
 // import AdvancedAnalyticsDashboard from './AdvancedAnalyticsDashboard';
