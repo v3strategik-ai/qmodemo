@@ -1,23 +1,55 @@
-from fastapi import FastAPI, APIRouter, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Depends, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import logging
-import json
+from pydantic import BaseModel, Field
 import asyncio
+import logging
+import os
+import tempfile
+from datetime import datetime, timezone, timedelta
+from typing import Dict, List, Optional, Any, Union
+import uuid
+import asyncio
+import json
+import hashlib
+import secrets
+import time
+from dotenv import load_dotenv
 import aiofiles
 from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
-import uuid
-from datetime import datetime, timezone, timedelta
 import io
 import base64
 
+# F1: Performance Optimization
+import redis.asyncio as redis
+from functools import wraps
+import gzip
+
+# F3: Advanced Security  
+import bcrypt
+import jwt
+from passlib.context import CryptContext
+
 # E2: Advanced AI Integration
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+# Load environment variables
+load_dotenv()
+
+# F1: Performance - Redis Cache Setup
+redis_client = None
+try:
+    redis_client = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'), decode_responses=True)
+except Exception as e:
+    logging.warning(f"Redis connection failed: {e}. Continuing without cache.")
+
+# F3: Security - Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer(auto_error=False)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
