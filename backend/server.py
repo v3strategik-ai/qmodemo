@@ -5687,7 +5687,7 @@ async def get_beta_analytics_dashboard(user_id: str):
         for item in feedback_summary:
             feedback_dict[item["_id"]] = {
                 "count": item["count"],
-                "avg_rating": round(item.get("avg_rating", 0), 2)
+                "avg_rating": round(item.get("avg_rating") or 0, 2)
             }
         
         # Tour completion rates
