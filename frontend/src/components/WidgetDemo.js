@@ -90,17 +90,18 @@ const WidgetDemo = () => {
   const [newKbTitle, setNewKbTitle] = useState('');
   const [newKbContent, setNewKbContent] = useState('');
 
-  // WebSocket connection
-  const {
-    isConnected: wsConnected,
-    isConnecting: wsConnecting,
-    sessionId: wsSessionId,
-    sendChatMessage,
-    sendVoiceTranscription,
-    requestTTS,
-    addEventListener: addWSListener,
-    removeEventListener: removeWSListener
+  // WebSocket connection - temporarily disabled for debugging
+  // const {
+  //   isConnected: wsConnected,
+  //   isConnecting: wsConnecting,
+  //   sessionId: wsSessionId,
+  //   sendChatMessage,
+  //   sendVoiceTranscription,
+  //   requestTTS,
+  //   addEventListener: addWSListener,
+  //   removeEventListener: removeWSListener
   // } = useWebSocket(currentUser?.id);
+  
   // Temporarily disable useWebSocket to test if it's causing the issue
   const wsConnected = false;
   const wsConnecting = false;
