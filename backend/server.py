@@ -5755,6 +5755,144 @@ async def get_user_activity_analytics(user_id: str, days: int = 7):
         logging.error(f"Get user activity error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+async def create_default_tours():
+    """Create default guided tours for new users"""
+    try:
+        # Check if tours already exist
+        existing_tours = await db.feature_tours.count_documents({})
+        if existing_tours > 0:
+            return  # Tours already created
+        
+        default_tours = [
+            {
+                "tour_name": "welcome_tour",
+                "title": "Welcome to modQ",
+                "description": "Get started with the basics of modQ's AI-powered business intelligence",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Welcome!",
+                        "content": "Welcome to modQ! Let's take a quick tour of the key features.",
+                        "target": "body",
+                        "placement": "center"
+                    },
+                    {
+                        "step": 2,
+                        "title": "AI Chat",
+                        "content": "Start conversations with our AI assistant for instant business insights.",
+                        "target": "[data-value='chat']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 3,
+                        "title": "Voice Interface",
+                        "content": "Use voice commands and get spoken responses for hands-free interaction.",
+                        "target": "[data-value='voice']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 4,
+                        "title": "Analytics Dashboard",
+                        "content": "View detailed analytics and insights about your business data.",
+                        "target": "[data-value='analytics']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 5,
+                        "title": "Role Switcher",
+                        "content": "Try different user roles to see how the interface adapts to different needs.",
+                        "target": ".role-switcher",
+                        "placement": "bottom"
+                    }
+                ],
+                "target_roles": [],  # Available to all roles
+                "is_active": True
+            },
+            {
+                "tour_name": "ceo_tour",
+                "title": "Executive Dashboard Tour",
+                "description": "Discover executive-level features and high-level analytics",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Executive View",
+                        "content": "As a CEO, you have access to high-level analytics and strategic insights.",
+                        "target": "body",
+                        "placement": "center"
+                    },
+                    {
+                        "step": 2,
+                        "title": "Team Management",
+                        "content": "Monitor team performance and collaboration across departments.",
+                        "target": "[data-value='teams']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 3,
+                        "title": "Advanced Analytics",
+                        "content": "Access predictive analytics and business intelligence reports.",
+                        "target": "[data-value='analytics']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 4,
+                        "title": "Workflow Oversight",
+                        "content": "Review and optimize company-wide workflows and automations.",
+                        "target": "[data-value='workflows']",
+                        "placement": "bottom"
+                    }
+                ],
+                "target_roles": ["CEO"],
+                "is_active": True
+            },
+            {
+                "tour_name": "developer_tour",
+                "title": "Developer Features Tour",
+                "description": "Explore technical features, integrations, and API documentation",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Developer Mode",
+                        "content": "Welcome to developer mode! Here you'll find technical features and integrations.",
+                        "target": "body",
+                        "placement": "center"
+                    },
+                    {
+                        "step": 2,
+                        "title": "API Documentation",
+                        "content": "Access comprehensive API docs and integration guides.",
+                        "target": "[data-value='api-docs']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 3,
+                        "title": "Integration Marketplace",
+                        "content": "Browse and configure third-party integrations and APIs.",
+                        "target": "[data-value='integrations']",
+                        "placement": "bottom"
+                    },
+                    {
+                        "step": 4,
+                        "title": "Workflow Builder",
+                        "content": "Create custom workflows and automations with code integration.",
+                        "target": "[data-value='workflows']",
+                        "placement": "bottom"
+                    }
+                ],
+                "target_roles": ["Developer"],
+                "is_active": True
+            }
+        ]
+        
+        for tour_data in default_tours:
+            tour = FeatureTour(**tour_data)
+            await db.feature_tours.insert_one(tour.dict())
+        
+        logging.info("Default feature tours created successfully")
+        
+    except Exception as e:
+        logging.error(f"Failed to create default tours: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize performance optimizations on startup"""
