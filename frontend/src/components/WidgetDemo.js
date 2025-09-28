@@ -978,29 +978,14 @@ const WidgetDemo = () => {
 
             {/* Voice Tab */}
             <TabsContent value="voice" className="mt-6">
-              {/* <VoiceInterface 
+              <VoiceInterface 
                 currentUser={currentUser}
-                voiceSettings={config.voice_settings}
-                onVoiceSettingsChange={(newSettings) => {
-                  setConfig({
-                    ...config,
-                    voice_settings: { ...config.voice_settings, ...newSettings }
-                  });
-                }}
-                onTranscriptionResult={(transcript) => {
-                  // Add transcribed text to chat input
-                  setCurrentMessage(transcript);
-                  toast.success('Voice transcribed successfully!');
-                }}
-                onTTSResult={(audioData) => {
-                  // Handle TTS audio playback
-                  console.log('TTS audio received');
-                }}
-                ref={voiceInterfaceRef}
-              /> */}
-              <div className="p-6 text-center text-gray-400">
-                Voice Interface temporarily disabled for debugging
-              </div>
+                isConnected={wsConnected}
+                onSendMessage={sendMessage}
+                onVoiceTranscription={sendVoiceTranscription}
+                onTTSRequest={requestTTS}
+                config={config}
+              />
             </TabsContent>
 
             {/* Team Collaboration Tab */}
