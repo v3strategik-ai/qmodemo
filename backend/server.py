@@ -4459,13 +4459,163 @@ async def get_status_checks():
 # Include the router in the main app
 app.include_router(api_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# F2: Mobile & PWA Support - Static file serving
+from fastapi.staticfiles import StaticFiles
+
+# Serve PWA manifest and service worker
+@app.get("/manifest.json")
+async def get_manifest():
+    """Serve PWA manifest"""
+    return {
+        "name": "modQ Business Intelligence",
+        "short_name": "modQ",
+        "description": "Modular Quantum Business Intelligence Platform",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#000000",
+        "theme_color": "#3b82f6",
+        "orientation": "portrait-primary",
+        "icons": [
+            {
+                "src": "/static/icons/icon-192x192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "/static/icons/icon-512x512.png", 
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ],
+        "categories": ["business", "productivity", "analytics"],
+        "lang": "en-US"
+    }
+
+@app.get("/sw.js")
+async def get_service_worker():
+    """Serve service worker for PWA"""
+    sw_content = """
+// Service Worker for modQ PWA
+const CACHE_NAME = 'modq-v1';
+const urlsToCache = [
+  '/',
+  '/static/css/main.css',
+  '/static/js/main.js',
+  '/manifest.json'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      }
+    )
+  );
+});
+
+// Push notification support
+self.addEventListener('push', event => {
+  const options = {
+    body: event.data ? event.data.text() : 'New notification from modQ',
+    icon: '/static/icons/icon-192x192.png',
+    badge: '/static/icons/badge-72x72.png',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1
+    },
+    actions: [
+      {
+        action: 'explore',
+        title: 'Open modQ',
+        icon: '/static/icons/checkmark.png'
+      },
+      {
+        action: 'close',
+        title: 'Close notification',
+        icon: '/static/icons/xmark.png'
+      }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification('modQ', options)
+  );
+});
+"""
+    from fastapi.responses import Response
+    return Response(content=sw_content, media_type="application/javascript")
+
+# F2: Mobile API endpoints
+@api_router.get("/mobile/device-info")
+async def get_mobile_device_info():
+    """Get mobile-optimized configuration"""
+    return {
+        "features": {
+            "offline_support": True,
+            "push_notifications": True,
+            "biometric_auth": True,
+            "voice_input": True,
+            "camera_integration": True
+        },
+        "ui_config": {
+            "theme": "adaptive",
+            "navigation": "bottom_tabs",
+            "gestures_enabled": True,
+            "haptic_feedback": True
+        },
+        "performance": {
+            "lazy_loading": True,
+            "image_optimization": True,
+            "data_compression": True,
+            "offline_cache_size_mb": 50
+        }
+    }
+
+@api_router.post("/mobile/push-subscription")
+async def subscribe_to_push_notifications(
+    subscription_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Subscribe to push notifications"""
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Store push subscription
+        await db.push_subscriptions.update_one(
+            {"user_id": current_user["id"]},
+            {
+                "$set": {
+                    "user_id": current_user["id"],
+                    "subscription": subscription_data,
+                    "created_at": datetime.utcnow(),
+                    "is_active": True
+                }
+            },
+            upsert=True
+        )
+        
+        return {"message": "Push notifications enabled"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Push subscription error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to enable push notifications")
 
 # Configure logging
 logging.basicConfig(
