@@ -642,10 +642,6 @@ const WidgetDemo = () => {
                 <MessageSquare className="w-4 h-4" />
                 AI Chat
               </TabsTrigger>
-              <TabsTrigger value="sessions" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Sessions
-              </TabsTrigger>
               <TabsTrigger value="voice" className="flex items-center gap-2">
                 <Mic className="w-4 h-4" />
                 Voice
