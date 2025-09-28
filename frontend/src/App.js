@@ -39,12 +39,13 @@ const AuthProvider = ({ children }) => {
     localStorage.removeItem('modq_user');
   };
 
-  const register = async (username, email, role = 'employee') => {
+  const register = async (username, email, password, role = 'employee') => {
     try {
       setLoading(true);
       const response = await axios.post(`${API}/auth/register`, {
         username,
         email,
+        password,
         role
       });
       await login(response.data);
