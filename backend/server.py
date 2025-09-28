@@ -5797,7 +5797,17 @@ async def create_database_indexes():
         await db.team_members.create_index([("user_id", 1), ("team_id", 1)])
         await db.teams.create_index([("owner_id", 1)])
         
+        # Beta testing indexes
+        await db.user_roles.create_index([("user_id", 1)], unique=True)
+        await db.feedback_entries.create_index([("feature_name", 1), ("created_at", -1)])
+        await db.usage_events.create_index([("user_id", 1), ("timestamp", -1)])
+        await db.usage_events.create_index([("feature_name", 1), ("timestamp", -1)])
+        await db.user_tour_progress.create_index([("user_id", 1), ("tour_id", 1)])
+        
         logging.info("Database indexes created successfully")
+        
+        # Create default feature tours
+        await create_default_tours()
         
     except Exception as e:
         logging.warning(f"Index creation failed: {e}")
