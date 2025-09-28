@@ -37,8 +37,12 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const WidgetDemo = () => {
+  console.log('WidgetDemo component starting to render...');
+  
   const navigate = useNavigate();
   const { currentUser, register } = useAuth();
+  
+  console.log('WidgetDemo - currentUser:', !!currentUser, currentUser?.id);
   const [activeTab, setActiveTab] = useState('chat');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
