@@ -4793,6 +4793,76 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# F1: Performance - Startup optimization
+@app.on_event("startup")
+async def startup_event():
+    """Initialize performance optimizations on startup"""
+    try:
+        # Optimize database connection
+        await optimize_db_connection()
+        
+        # Test Redis connection
+        if redis_client:
+            await redis_client.ping()
+            logging.info("Redis cache connected successfully")
+        
+        # Create database indexes for performance
+        await create_database_indexes()
+        
+        logging.info("modQ API started successfully with performance optimizations")
+        
+    except Exception as e:
+        logging.error(f"Startup optimization failed: {e}")
+
+async def create_database_indexes():
+    """Create database indexes for better query performance"""
+    try:
+        # Chat messages indexes
+        await db.chat_messages.create_index([("user_id", 1), ("timestamp", -1)])
+        await db.chat_messages.create_index([("session_id", 1), ("timestamp", -1)])
+        
+        # User indexes
+        await db.users.create_index([("email", 1)], unique=True)
+        await db.users.create_index([("username", 1)])
+        
+        # Performance metrics indexes
+        await db.performance_metrics.create_index([("timestamp", -1)])
+        await db.performance_metrics.create_index([("endpoint", 1), ("timestamp", -1)])
+        
+        # Session indexes
+        await db.conversation_sessions.create_index([("user_id", 1), ("updated_at", -1)])
+        
+        # Team indexes
+        await db.team_members.create_index([("user_id", 1), ("team_id", 1)])
+        await db.teams.create_index([("owner_id", 1)])
+        
+        logging.info("Database indexes created successfully")
+        
+    except Exception as e:
+        logging.warning(f"Index creation failed: {e}")
+
 @app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    try:
+        # Close database connection
+        client.close()
+        
+        # Close Redis connection
+        if redis_client:
+            await redis_client.close()
+        
+        logging.info("modQ API shutdown completed")
+        
+    except Exception as e:
+        logging.error(f"Shutdown error: {e}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "server:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
