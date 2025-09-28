@@ -5423,6 +5423,11 @@ async def get_current_role(user_id: str):
                 "permissions": ["basic_access"],
                 "ui_settings": {"default_view": True}
             }
+        
+        # Remove MongoDB ObjectId to avoid serialization issues
+        if '_id' in role:
+            del role['_id']
+        
         return role
     except Exception as e:
         logging.error(f"Get current role error: {e}")
