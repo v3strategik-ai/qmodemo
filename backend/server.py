@@ -622,6 +622,70 @@ class AIAgentCreate(BaseModel):
     capabilities: List[str] = []
     user_id: str
 
+# E3: Request Models
+class CustomIntegrationCreate(BaseModel):
+    name: str
+    description: str
+    category: str
+    code: str
+    language: str = "python"
+    requirements: List[str] = []
+    endpoints: List[Dict[str, Any]] = []
+    configuration_schema: Dict[str, Any] = {}
+    tags: List[str] = []
+    author_id: str
+
+class IntegrationInstallRequest(BaseModel):
+    integration_id: str
+    user_id: str
+    configuration: Dict[str, Any] = {}
+
+class IntegrationReviewCreate(BaseModel):
+    integration_id: str
+    user_id: str
+    rating: int
+    review: Optional[str] = None
+
+# E4: Request Models
+class DashboardCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    user_id: str
+    team_id: Optional[str] = None
+    layout: Dict[str, Any] = {}
+    widgets: List[Dict[str, Any]] = []
+    filters: Dict[str, Any] = {}
+
+class ReportTemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    type: str
+    template_data: Dict[str, Any] = {}
+    parameters: List[Dict[str, Any]] = []
+    schedule: Optional[Dict[str, Any]] = None
+    recipients: List[str] = []
+    user_id: str
+
+class KPICreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    calculation: str
+    target_value: Optional[float] = None
+    unit: Optional[str] = None
+    category: str = "general"
+    frequency: str = "daily"
+    threshold_config: Dict[str, Any] = {}
+    user_id: str
+
+class PredictiveModelCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    model_type: str
+    algorithm: str
+    features: List[str] = []
+    target: Optional[str] = None
+    user_id: str
+
 class WorkflowExecution(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     workflow_id: str
