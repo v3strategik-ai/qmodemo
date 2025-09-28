@@ -33,6 +33,12 @@ import WorkflowBuilder from './WorkflowBuilder';
 // import APIDocs from './APIDocs';
 import useWebSocket from '../hooks/useWebSocket';
 
+// Beta Testing Components
+import RoleSwitcher from './RoleSwitcher';
+import GuidedTour from './GuidedTour';
+import BetaAnalyticsDashboard from './BetaAnalyticsDashboard';
+import { FeedbackButton } from './FeedbackWidget';
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
