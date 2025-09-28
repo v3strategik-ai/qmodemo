@@ -20,9 +20,17 @@ const useWebSocket = (userId) => {
 
   // Generate WebSocket URL
   const getWebSocketUrl = useCallback(() => {
-    const wsProtocol = BACKEND_URL.startsWith('https://') ? 'wss://' : 'ws://';
-    const baseUrl = BACKEND_URL.replace(/^https?:\/\//, '');
-    return `${wsProtocol}${baseUrl}/ws/chat/${userId}`;
+    if (!userId) return null;
+    
+    // For production deployment, use the backend URL with correct WebSocket path
+    if (BACKEND_URL && BACKEND_URL.includes('emergentagent.com')) {
+      const wsProtocol = BACKEND_URL.startsWith('https://') ? 'wss://' : 'ws://';
+      const baseUrl = BACKEND_URL.replace(/^https?:\/\//, '');
+      return `${wsProtocol}${baseUrl}/api/ws/chat/${userId}`;
+    }
+    
+    // For local development, use localhost:8001
+    return `ws://localhost:8001/api/ws/chat/${userId}`;
   }, [userId]);
 
   // Add event listener
