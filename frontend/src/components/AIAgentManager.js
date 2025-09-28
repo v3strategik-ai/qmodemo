@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Slider } from './ui/slider';
 import { Bot, Plus, Edit, Trash2, MessageSquare, Settings, Sparkles } from 'lucide-react';
-import { toast } from './ui/use-toast';
+import { toast } from '../hooks/use-toast';
 import axios from 'axios';
 
 const AIAgentManager = ({ currentUser }) => {
