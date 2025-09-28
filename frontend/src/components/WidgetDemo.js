@@ -661,12 +661,12 @@ const WidgetDemo = () => {
                 AI Agents
               </TabsTrigger>
               <TabsTrigger value="integrations" className="flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Integrations
+                <Layers className="w-4 h-4" />
+                Marketplace
               </TabsTrigger>
-              <TabsTrigger value="branding" className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Branding
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Analytics
               </TabsTrigger>
               <TabsTrigger value="insights" className="flex items-center gap-2">
                 <Brain className="w-4 h-4" />
