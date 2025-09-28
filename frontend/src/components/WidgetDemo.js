@@ -355,6 +355,11 @@ const WidgetDemo = () => {
   };
 
   const loadKnowledgeBase = async () => {
+    if (!currentUser?.id) {
+      console.warn('Cannot load knowledge base: currentUser not available');
+      return;
+    }
+    
     try {
       const response = await axios.get(`${API}/knowledge-base/${currentUser.id}`);
       setKnowledgeItems(response.data);
