@@ -1187,7 +1187,6 @@ async def handle_streaming_chat(message_data: Dict, user_id: str, session_id: st
         user_message = UserMessage(text=message_text)
         
         # Stream AI response
-        response_chunks = []
         full_response = ""
         
         # Start streaming response
