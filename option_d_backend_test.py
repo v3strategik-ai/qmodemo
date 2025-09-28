@@ -67,6 +67,7 @@ class OptionDBetaTestingTester:
         user_data = {
             "username": f"beta_tester_{timestamp}",
             "email": f"beta_{timestamp}@modq.com",
+            "password": "TestPassword123!",
             "role": "employee"
         }
         
