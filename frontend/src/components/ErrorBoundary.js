@@ -16,19 +16,9 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log the error details
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    // Only show error boundary for critical errors
-    if (error && error.name && (error.name.includes('ChunkLoadError') || error.name.includes('ReferenceError') || error.name.includes('TypeError'))) {
-      this.setState({
-        error: error,
-        errorInfo: errorInfo,
-        hasError: true
-      });
-    } else {
-      console.warn('ErrorBoundary: Not showing error UI for non-critical error');
-    }
+    // Log the error details but don't change state
+    console.error('ErrorBoundary componentDidCatch:', error, errorInfo);
+    // Temporarily not setting hasError to true to disable error UI
   }
 
   render() {
