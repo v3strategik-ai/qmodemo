@@ -99,6 +99,8 @@ const WidgetDemo = () => {
     addEventListener: addWSListener,
     removeEventListener: removeWSListener
   } = useWebSocket(currentUser?.id);
+  
+  console.log('WidgetDemo - WebSocket hook initialized, connected:', wsConnected);
 
   useEffect(() => {
     console.log('WidgetDemo mounting/updating', { currentUser: !!currentUser, userId: currentUser?.id });
