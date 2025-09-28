@@ -433,13 +433,15 @@ class LogoUploadResponse(BaseModel):
 # Workflow Builder Models
 class WorkflowNode(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: str  # trigger, action, condition, ai_response, integration
+    type: str  # Enhanced types: trigger, action, condition, ai_response, integration, database, api_call, loop, parallel, timer, webhook, notification, data_transform, script
     name: str
     description: Optional[str] = None
     position: Dict[str, float] = {"x": 0, "y": 0}  # Canvas position
     configuration: Dict[str, Any] = {}
     inputs: List[str] = []  # Connected input node IDs
     outputs: List[str] = []  # Connected output node IDs
+    error_handling: Dict[str, Any] = {"retry_count": 3, "retry_delay": 1, "on_error": "stop"}  # Enhanced error handling
+    timeout: Optional[int] = 30  # Timeout in seconds
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class WorkflowConnection(BaseModel):
