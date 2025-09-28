@@ -2549,6 +2549,22 @@ async def get_workflow_templates(category: Optional[str] = None, industry: Optio
         logging.error(f"Get workflow templates error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve workflow templates")
 
+@api_router.get("/workflow-node-types")
+async def get_workflow_node_types(category: Optional[str] = None):
+    """Get enhanced workflow node types with advanced capabilities"""
+    try:
+        node_types = get_enhanced_node_types()
+        
+        # Filter by category if provided
+        if category:
+            node_types = [nt for nt in node_types if nt["category"] == category]
+        
+        return {"node_types": node_types}
+        
+    except Exception as e:
+        logging.error(f"Get workflow node types error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve workflow node types")
+
 @api_router.post("/workflows/execute", response_model=WorkflowExecution)
 async def execute_workflow(execution_request: WorkflowExecuteRequest):
     """Execute a workflow (simulation for demo purposes)"""
