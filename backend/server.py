@@ -2645,7 +2645,6 @@ async def get_knowledge_base(user_id: str):
 async def chat_with_ai(chat_request: ChatRequest):
     try:
         # Import here to avoid startup issues
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         # Get or create session if not provided
         session_id = chat_request.session_id
