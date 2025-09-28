@@ -2766,6 +2766,180 @@ async def submit_chat_feedback(feedback_data: ChatFeedback):
         logging.error(f"Feedback error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to submit feedback")
 
+# E2: Advanced AI Integration - AI Agent Management
+@api_router.post("/ai-agents/create", response_model=AIAgent)
+async def create_ai_agent(agent_data: AIAgentCreate):
+    """Create a new AI agent with custom configuration"""
+    try:
+        agent = AIAgent(**agent_data.dict())
+        await db.ai_agents.insert_one(agent.dict())
+        
+        logging.info(f"AI Agent '{agent.name}' created by user {agent_data.user_id}")
+        return agent
+        
+    except Exception as e:
+        logging.error(f"Create AI agent error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create AI agent")
+
+@api_router.get("/ai-agents/user/{user_id}", response_model=List[AIAgent])
+async def get_user_ai_agents(user_id: str):
+    """Get all AI agents for a user"""
+    try:
+        agents = await db.ai_agents.find({"user_id": user_id}).to_list(length=None)
+        return [AIAgent(**agent) for agent in agents]
+        
+    except Exception as e:
+        logging.error(f"Get user AI agents error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get AI agents")
+
+@api_router.get("/ai-agents/{agent_id}", response_model=AIAgent)
+async def get_ai_agent(agent_id: str, user_id: str):
+    """Get a specific AI agent"""
+    try:
+        agent = await db.ai_agents.find_one({"id": agent_id, "user_id": user_id})
+        if not agent:
+            raise HTTPException(status_code=404, detail="AI agent not found")
+        
+        return AIAgent(**agent)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Get AI agent error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get AI agent")
+
+@api_router.put("/ai-agents/{agent_id}", response_model=AIAgent)
+async def update_ai_agent(agent_id: str, agent_data: AIAgentCreate):
+    """Update an AI agent"""
+    try:
+        update_data = agent_data.dict()
+        update_data["updated_at"] = datetime.now(timezone.utc)
+        
+        result = await db.ai_agents.update_one(
+            {"id": agent_id, "user_id": agent_data.user_id},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="AI agent not found")
+        
+        updated_agent = await db.ai_agents.find_one({"id": agent_id})
+        logging.info(f"AI Agent {agent_id} updated")
+        return AIAgent(**updated_agent)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Update AI agent error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update AI agent")
+
+@api_router.delete("/ai-agents/{agent_id}")
+async def delete_ai_agent(agent_id: str, user_id: str):
+    """Delete an AI agent"""
+    try:
+        result = await db.ai_agents.delete_one({"id": agent_id, "user_id": user_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="AI agent not found")
+        
+        logging.info(f"AI Agent {agent_id} deleted")
+        return {"status": "success", "message": "AI agent deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Delete AI agent error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete AI agent")
+
+@api_router.post("/ai-agents/{agent_id}/chat")
+async def chat_with_ai_agent(agent_id: str, user_id: str, message: str):
+    """Chat with a specific AI agent"""
+    try:
+        # Get the AI agent
+        agent = await db.ai_agents.find_one({"id": agent_id, "user_id": user_id})
+        if not agent:
+            raise HTTPException(status_code=404, detail="AI agent not found")
+        
+        agent_obj = AIAgent(**agent)
+        
+        # Initialize LLM chat with agent configuration
+        chat = LlmChat(
+            api_key=os.environ.get('EMERGENT_LLM_KEY'),
+            session_id=f"agent-{agent_id}-{user_id}",
+            system_message=agent_obj.system_prompt
+        ).with_model(agent_obj.provider, agent_obj.model)
+        
+        # Create user message
+        user_message = UserMessage(text=message)
+        
+        # Get AI response
+        start_time = datetime.now()
+        ai_response = await chat.send_message(user_message)
+        response_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        return {
+            "agent_id": agent_id,
+            "agent_name": agent_obj.name,
+            "agent_type": agent_obj.type,
+            "message": message,
+            "response": ai_response,
+            "response_time_ms": int(response_time)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Chat with AI agent error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to chat with AI agent")
+
+@api_router.get("/ai-agents/templates")
+async def get_ai_agent_templates():
+    """Get pre-built AI agent templates"""
+    templates = [
+        {
+            "id": "sales-agent-template",
+            "name": "Sales Agent",
+            "type": "sales_agent",
+            "description": "Specialized in lead qualification, sales conversations, and deal closing",
+            "system_prompt": "You are a professional sales agent with expertise in lead qualification, objection handling, and closing deals. Your goal is to understand customer needs, qualify leads effectively, and guide prospects through the sales process. Be persuasive but helpful, and always focus on providing value to the customer.",
+            "capabilities": ["lead_qualification", "objection_handling", "sales_conversation", "deal_closing"],
+            "recommended_model": "gpt-4o",
+            "temperature": 0.7
+        },
+        {
+            "id": "support-agent-template",
+            "name": "Support Agent",
+            "type": "support_agent",
+            "description": "Expert in customer support, troubleshooting, and problem resolution",
+            "system_prompt": "You are a customer support specialist with deep knowledge of troubleshooting, problem resolution, and customer service best practices. Your goal is to help customers resolve issues quickly and efficiently while maintaining a positive, helpful attitude. Always ask clarifying questions and provide step-by-step solutions.",
+            "capabilities": ["troubleshooting", "problem_resolution", "customer_service", "technical_support"],
+            "recommended_model": "gpt-4o",
+            "temperature": 0.5
+        },
+        {
+            "id": "analytics-agent-template",
+            "name": "Analytics Agent",
+            "type": "analytics_agent",
+            "description": "Specialized in data analysis, insights generation, and business intelligence",
+            "system_prompt": "You are a data analytics expert with expertise in business intelligence, data interpretation, and insight generation. Your goal is to analyze data, identify trends, and provide actionable business insights. Always support your conclusions with data and provide clear, concise recommendations.",
+            "capabilities": ["data_analysis", "trend_identification", "business_intelligence", "reporting"],
+            "recommended_model": "gpt-4o",
+            "temperature": 0.3
+        },
+        {
+            "id": "marketing-agent-template",
+            "name": "Marketing Agent",
+            "type": "marketing_agent",
+            "description": "Expert in content creation, campaign planning, and marketing strategy",
+            "system_prompt": "You are a marketing professional with expertise in content creation, campaign planning, and digital marketing strategy. Your goal is to create compelling marketing content, develop effective campaigns, and provide strategic marketing advice. Be creative but data-driven in your approach.",
+            "capabilities": ["content_creation", "campaign_planning", "marketing_strategy", "social_media"],
+            "recommended_model": "gpt-4o",
+            "temperature": 0.8
+        }
+    ]
+    
+    return {"templates": templates}
+
 # Analytics routes for admin
 @api_router.get("/admin/analytics")
 async def get_admin_analytics():
