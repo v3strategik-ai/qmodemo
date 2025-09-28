@@ -4617,6 +4617,175 @@ async def subscribe_to_push_notifications(
         logging.error(f"Push subscription error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to enable push notifications")
 
+# F4: API Documentation & SDK Support
+@api_router.get("/docs/openapi-spec")
+async def get_openapi_spec():
+    """Get OpenAPI specification for SDK generation"""
+    from fastapi.openapi.utils import get_openapi
+    
+    openapi_schema = get_openapi(
+        title="modQ API",
+        version="1.0.0",
+        description="Modular Quantum Business Intelligence API - Complete SDK Documentation",
+        routes=app.routes,
+    )
+    
+    # Add custom SDK information
+    openapi_schema["info"]["x-sdk-config"] = {
+        "languages": ["python", "javascript", "typescript", "php", "java", "go"],
+        "package_name": "modq-sdk",
+        "github_repo": "https://github.com/modq/sdk",
+        "documentation": "https://docs.modq.ai"
+    }
+    
+    return openapi_schema
+
+@api_router.get("/docs/sdk-examples")
+async def get_sdk_examples():
+    """Get SDK usage examples for different languages"""
+    return {
+        "python": {
+            "installation": "pip install modq-sdk",
+            "basic_usage": """
+from modq import ModQClient
+
+client = ModQClient(api_key="your-api-key")
+
+# Send a chat message
+response = client.chat.send_message(
+    user_id="user123",
+    message="Analyze our Q3 sales performance"
+)
+
+# Get chat history
+history = client.chat.get_history(user_id="user123")
+
+# Create a workflow
+workflow = client.workflows.create(
+    name="Lead Qualification",
+    category="sales"
+)
+""",
+            "authentication": """
+# Using API key
+client = ModQClient(api_key="your-api-key")
+
+# Using JWT token
+client = ModQClient(token="your-jwt-token")
+"""
+        },
+        "javascript": {
+            "installation": "npm install modq-sdk",
+            "basic_usage": """
+import { ModQClient } from 'modq-sdk';
+
+const client = new ModQClient({ apiKey: 'your-api-key' });
+
+// Send a chat message
+const response = await client.chat.sendMessage({
+  userId: 'user123',
+  message: 'Analyze our Q3 sales performance'
+});
+
+// Get chat history
+const history = await client.chat.getHistory({ userId: 'user123' });
+
+// Create a workflow
+const workflow = await client.workflows.create({
+  name: 'Lead Qualification',
+  category: 'sales'
+});
+""",
+            "authentication": """
+// Using API key
+const client = new ModQClient({ apiKey: 'your-api-key' });
+
+// Using JWT token
+const client = new ModQClient({ token: 'your-jwt-token' });
+"""
+        },
+        "curl": {
+            "authentication": """
+# Using API key
+curl -H "Authorization: Bearer your-api-key" \\
+     https://api.modq.ai/api/chat/history/user123
+
+# Login to get JWT token
+curl -X POST https://api.modq.ai/api/auth/login \\
+     -H "Content-Type: application/json" \\
+     -d '{"email": "user@example.com", "password": "password"}'
+""",
+            "chat_example": """
+# Send chat message via WebSocket (use wscat or similar)
+wscat -c "wss://api.modq.ai/ws/chat/user123"
+> {"type": "chat_message", "message": "Hello", "personality": "Professional Assistant"}
+
+# Get chat history via REST
+curl -H "Authorization: Bearer your-token" \\
+     https://api.modq.ai/api/chat/history/user123
+"""
+        }
+    }
+
+@api_router.get("/docs/rate-limits")
+async def get_rate_limits():
+    """Get API rate limiting information"""
+    return {
+        "default_limits": {
+            "requests_per_minute": 100,
+            "requests_per_hour": 1000,
+            "requests_per_day": 10000
+        },
+        "premium_limits": {
+            "requests_per_minute": 500,
+            "requests_per_hour": 5000,
+            "requests_per_day": 50000
+        },
+        "headers": {
+            "rate_limit_remaining": "X-RateLimit-Remaining",
+            "rate_limit_reset": "X-RateLimit-Reset",
+            "rate_limit_limit": "X-RateLimit-Limit"
+        },
+        "error_codes": {
+            "429": "Rate limit exceeded",
+            "503": "Service temporarily unavailable"
+        }
+    }
+
+@api_router.get("/docs/webhooks")
+async def get_webhook_documentation():
+    """Get webhook configuration and examples"""
+    return {
+        "supported_events": [
+            "chat.message.created",
+            "workflow.execution.completed",
+            "integration.connected",
+            "user.registered",
+            "team.member.added"
+        ],
+        "configuration": {
+            "url": "https://your-app.com/webhooks/modq",
+            "secret": "webhook-secret-key",
+            "events": ["chat.message.created", "workflow.execution.completed"]
+        },
+        "payload_example": {
+            "event": "chat.message.created",
+            "timestamp": "2024-01-15T10:30:00Z",
+            "data": {
+                "message_id": "msg_123",
+                "user_id": "user_456",
+                "session_id": "session_789",
+                "message": "Hello AI",
+                "response": "Hello! How can I help you today?"
+            }
+        },
+        "verification": {
+            "header": "X-ModQ-Signature",
+            "algorithm": "HMAC-SHA256",
+            "example": "sha256=a1b2c3d4e5f6..."
+        }
+    }
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
