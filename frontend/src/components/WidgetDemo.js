@@ -1014,7 +1014,10 @@ const WidgetDemo = () => {
 
             {/* Workflow Builder Tab */}
             <TabsContent value="workflows" className="mt-6">
-              <WorkflowBuilder currentUser={currentUser} />
+              {/* <WorkflowBuilder currentUser={currentUser} /> */}
+              <div className="p-6 text-center text-gray-400">
+                Workflow Builder temporarily disabled for debugging
+              </div>
             </TabsContent>
 
             {/* AI Agent Manager Tab */}
