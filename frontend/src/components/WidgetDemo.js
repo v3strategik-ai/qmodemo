@@ -341,7 +341,7 @@ const WidgetDemo = () => {
 
   const handleAuth = async (e) => {
     e.preventDefault();
-    if (!username.trim() || !email.trim()) {
+    if (!username.trim() || !email.trim() || !password.trim()) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -349,7 +349,7 @@ const WidgetDemo = () => {
     try {
       setLoading(true);
       console.log('Attempting registration with:', { username, email });
-      await register(username, email, 'employee');
+      await register(username, email, password, 'employee');
       setIsLoggedIn(true);
       console.log('Registration successful');
     } catch (error) {
