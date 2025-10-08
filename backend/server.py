@@ -2804,17 +2804,6 @@ class WorkflowSuggestion(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     applied: bool = False
 
-class WorkflowMetrics(BaseModel):
-    workflow_id: str
-    total_executions: int = 0
-    successful_executions: int = 0
-    failed_executions: int = 0
-    average_execution_time: float = 0.0
-    last_execution: Optional[datetime] = None
-    performance_score: float = 0.0
-    error_rate: float = 0.0
-    usage_frequency: int = 0
-
 # E1: Enhanced Workflow Automation - Advanced Node Types
 def get_enhanced_node_types():
     """Get enhanced workflow node types with advanced capabilities"""
