@@ -8556,6 +8556,344 @@ async def get_user_mfa_devices(user_id: str):
         logging.error(f"Get MFA devices error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Enhanced RBAC Endpoints
+@app.post("/api/enterprise/roles/create")
+async def create_enterprise_role(role_data: dict):
+    """Create enterprise role with granular permissions"""
+    try:
+        required_fields = ['name', 'description', 'permissions']
+        for field in required_fields:
+            if field not in role_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        # Set defaults
+        role_data.setdefault('resource_permissions', {})
+        role_data.setdefault('department', None)
+        role_data.setdefault('is_system_role', False)
+        
+        role = EnterpriseRole(**role_data)
+        await db.enterprise_roles.insert_one(role.dict())
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="role_creation",
+            resource="enterprise_roles",
+            action="create",
+            compliance_framework="sox",
+            details={"role_name": role.name, "permissions_count": len(role.permissions)}
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {"message": "Enterprise role created successfully", "role_id": role.id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Create enterprise role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/enterprise/roles")
+async def get_enterprise_roles():
+    """Get all enterprise roles"""
+    try:
+        roles = await db.enterprise_roles.find({}).to_list(length=None)
+        
+        for role in roles:
+            if '_id' in role:
+                del role['_id']
+        
+        return {"roles": roles}
+        
+    except Exception as e:
+        logging.error(f"Get enterprise roles error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/enterprise/roles/assign")
+async def assign_user_role(assignment_data: dict):
+    """Assign enterprise role to user"""
+    try:
+        user_id = assignment_data.get('user_id')
+        role_id = assignment_data.get('role_id')
+        
+        if not user_id or not role_id:
+            raise HTTPException(status_code=400, detail="user_id and role_id required")
+        
+        # Verify role exists
+        role = await db.enterprise_roles.find_one({"id": role_id})
+        if not role:
+            raise HTTPException(status_code=404, detail="Role not found")
+        
+        # Assign role to user
+        await db.user_role_assignments.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "role_id": role_id,
+                    "assigned_at": datetime.now(timezone.utc)
+                }
+            },
+            upsert=True
+        )
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="role_assignment",
+            user_id=user_id,
+            resource="user_role_assignments",
+            action="assign",
+            compliance_framework="sox",
+            details={"role_id": role_id, "role_name": role['name']}
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {"message": "Role assigned successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Assign user role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# GDPR Compliance Endpoints
+@app.post("/api/compliance/gdpr/data-export")
+async def gdpr_data_export(request_data: dict):
+    """GDPR Article 15 - Right of Access (Data Export)"""
+    try:
+        user_id = request_data.get('user_id')
+        requester_email = request_data.get('requester_email')
+        
+        if not user_id or not requester_email:
+            raise HTTPException(status_code=400, detail="user_id and requester_email required")
+        
+        # Collect all user data across collections
+        user_data = {
+            "request_id": str(uuid.uuid4()),
+            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "user_id": user_id,
+            "requester_email": requester_email
+        }
+        
+        # Get user profile data
+        user_profile = await db.users.find_one({"id": user_id})
+        if user_profile:
+            if '_id' in user_profile:
+                del user_profile['_id']
+            user_data["profile"] = user_profile
+        
+        # Get chat messages
+        messages = await db.chat_messages.find({"user_id": user_id}).to_list(length=None)
+        for msg in messages:
+            if '_id' in msg:
+                del msg['_id']
+        user_data["chat_messages"] = messages
+        
+        # Get workflow data
+        workflows = await db.workflows.find({"user_id": user_id}).to_list(length=None)
+        for wf in workflows:
+            if '_id' in wf:
+                del wf['_id']
+        user_data["workflows"] = workflows
+        
+        # Get analytics data
+        analytics = await db.usage_events.find({"user_id": user_id}).to_list(length=None)
+        for event in analytics:
+            if '_id' in event:
+                del event['_id']
+        user_data["usage_analytics"] = analytics
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="gdpr_data_export",
+            user_id=user_id,
+            resource="user_data",
+            action="export",
+            compliance_framework="gdpr",
+            details={"requester_email": requester_email, "data_types": list(user_data.keys())}
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {
+            "message": "GDPR data export completed",
+            "export_data": user_data,
+            "data_categories": len(user_data),
+            "compliance_notice": "This export contains all personal data we process about you under GDPR Article 15"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"GDPR data export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/compliance/gdpr/data-deletion")
+async def gdpr_data_deletion(request_data: dict):
+    """GDPR Article 17 - Right to Erasure (Right to be Forgotten)"""
+    try:
+        user_id = request_data.get('user_id')
+        requester_email = request_data.get('requester_email')
+        deletion_scope = request_data.get('deletion_scope', 'full')  # full, partial
+        
+        if not user_id or not requester_email:
+            raise HTTPException(status_code=400, detail="user_id and requester_email required")
+        
+        deletion_results = {
+            "request_id": str(uuid.uuid4()),
+            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "user_id": user_id,
+            "deletion_scope": deletion_scope,
+            "deleted_data": []
+        }
+        
+        if deletion_scope == 'full':
+            # Delete all user data
+            collections_to_clear = [
+                ("users", {"id": user_id}),
+                ("chat_messages", {"user_id": user_id}),
+                ("workflows", {"user_id": user_id}),
+                ("user_settings", {"user_id": user_id}),
+                ("usage_events", {"user_id": user_id}),
+                ("mfa_devices", {"user_id": user_id}),
+                ("user_role_assignments", {"user_id": user_id})
+            ]
+            
+            for collection_name, query in collections_to_clear:
+                collection = getattr(db, collection_name)
+                result = await collection.delete_many(query)
+                deletion_results["deleted_data"].append({
+                    "collection": collection_name,
+                    "deleted_count": result.deleted_count
+                })
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="gdpr_data_deletion",
+            user_id=user_id,
+            resource="user_data",
+            action="delete",
+            compliance_framework="gdpr",
+            details={
+                "requester_email": requester_email,
+                "deletion_scope": deletion_scope,
+                "deleted_collections": len(deletion_results["deleted_data"])
+            }
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {
+            "message": "GDPR data deletion completed",
+            "deletion_results": deletion_results,
+            "compliance_notice": "Data has been permanently deleted under GDPR Article 17"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"GDPR data deletion error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# PII Detection and Classification
+@app.post("/api/compliance/data/classify")
+async def classify_data_content(content_data: dict):
+    """Classify data content and detect PII"""
+    try:
+        content = content_data.get('content', '')
+        data_type = content_data.get('data_type', 'unknown')
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="content is required")
+        
+        # Detect PII
+        pii_detected = enterprise_security.detect_pii(content)
+        
+        # Determine classification level
+        classification_level = "public"
+        if pii_detected:
+            classification_level = "confidential" if len(pii_detected) > 2 else "internal"
+        
+        # Create classification record
+        classification = DataClassification(
+            data_type=data_type,
+            classification_level=classification_level,
+            pii_detected=bool(pii_detected),
+            pii_types=list(pii_detected.keys()),
+            encryption_required=classification_level in ["confidential", "restricted"],
+            retention_period=365 if pii_detected else None
+        )
+        
+        await db.data_classifications.insert_one(classification.dict())
+        
+        # Mask PII in response
+        masked_content = content
+        for pii_type, matches in pii_detected.items():
+            for match in matches:
+                masked_content = masked_content.replace(match, f"[{pii_type.upper()}_REDACTED]")
+        
+        return {
+            "classification_id": classification.id,
+            "classification_level": classification_level,
+            "pii_detected": bool(pii_detected),
+            "pii_types": list(pii_detected.keys()),
+            "encryption_required": classification.encryption_required,
+            "masked_content": masked_content,
+            "original_pii_count": sum(len(matches) for matches in pii_detected.values())
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Data classification error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Compliance Reporting
+@app.get("/api/compliance/audit/report")
+async def generate_compliance_audit_report(framework: str = "all", days: int = 30):
+    """Generate compliance audit report"""
+    try:
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        query = {"timestamp": {"$gte": start_date}}
+        if framework != "all":
+            query["compliance_framework"] = framework
+        
+        # Get compliance events
+        events = await db.compliance_events.find(query).sort("timestamp", -1).to_list(length=None)
+        
+        # Remove MongoDB ObjectIds
+        for event in events:
+            if '_id' in event:
+                del event['_id']
+        
+        # Generate statistics
+        stats = {
+            "total_events": len(events),
+            "frameworks": {},
+            "risk_levels": {},
+            "event_types": {}
+        }
+        
+        for event in events:
+            framework = event.get("compliance_framework", "unknown")
+            risk_level = event.get("risk_level", "low")
+            event_type = event.get("event_type", "unknown")
+            
+            stats["frameworks"][framework] = stats["frameworks"].get(framework, 0) + 1
+            stats["risk_levels"][risk_level] = stats["risk_levels"].get(risk_level, 0) + 1
+            stats["event_types"][event_type] = stats["event_types"].get(event_type, 0) + 1
+        
+        return {
+            "report_id": str(uuid.uuid4()),
+            "generated_at": datetime.now(timezone.utc),
+            "period_days": days,
+            "framework_filter": framework,
+            "statistics": stats,
+            "events": events[:100],  # Limit to most recent 100 events
+            "compliance_status": "compliant" if stats["risk_levels"].get("critical", 0) == 0 else "needs_attention"
+        }
+        
+    except Exception as e:
+        logging.error(f"Generate compliance report error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
