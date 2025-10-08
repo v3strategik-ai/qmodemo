@@ -7099,6 +7099,248 @@ async def health_check():
             "error": str(e)
         }
 
+# =============================================
+# F2: MOBILE RESPONSIVENESS & PWA
+# =============================================
+
+class MobileConfig(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    device_type: str = "mobile"  # mobile, tablet, desktop
+    preferences: Dict[str, Any] = {
+        "theme": "auto",
+        "compact_mode": True,
+        "offline_sync": True,
+        "push_notifications": True,
+        "gesture_navigation": True
+    }
+    offline_data: Dict[str, Any] = {}
+    sync_status: str = "synced"  # synced, pending, offline
+    last_sync: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PushSubscription(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    endpoint: str
+    keys: Dict[str, str]
+    device_info: Dict[str, Any] = {}
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# F2: Mobile & PWA Endpoints
+@app.post("/api/mobile/config")
+async def update_mobile_config(config_data: dict):
+    """Update mobile app configuration"""
+    try:
+        user_id = config_data.get('user_id')
+        preferences = config_data.get('preferences', {})
+        device_type = config_data.get('device_type', 'mobile')
+        
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id required")
+        
+        # Update or create mobile config
+        await db.mobile_configs.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "device_type": device_type,
+                    "preferences": preferences,
+                    "last_sync": datetime.now(timezone.utc)
+                }
+            },
+            upsert=True
+        )
+        
+        return {"message": "Mobile configuration updated successfully"}
+        
+    except Exception as e:
+        logging.error(f"Update mobile config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/mobile/config/{user_id}")
+async def get_mobile_config(user_id: str):
+    """Get mobile app configuration"""
+    try:
+        config = await db.mobile_configs.find_one({"user_id": user_id})
+        
+        if not config:
+            # Return default config
+            default_config = MobileConfig(user_id=user_id)
+            return default_config.dict()
+        
+        # Remove MongoDB ObjectId
+        if '_id' in config:
+            del config['_id']
+            
+        return config
+        
+    except Exception as e:
+        logging.error(f"Get mobile config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/pwa/install")
+async def track_pwa_install(install_data: dict):
+    """Track PWA installation"""
+    try:
+        user_id = install_data.get('user_id')
+        device_info = install_data.get('device_info', {})
+        
+        # Log PWA install event
+        install_event = {
+            "user_id": user_id,
+            "event_type": "pwa_install",
+            "device_info": device_info,
+            "timestamp": datetime.now(timezone.utc)
+        }
+        
+        await db.pwa_events.insert_one(install_event)
+        
+        return {"message": "PWA installation tracked successfully"}
+        
+    except Exception as e:
+        logging.error(f"Track PWA install error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/pwa/push-subscribe")
+async def subscribe_push_notifications(subscription_data: dict):
+    """Subscribe to push notifications"""
+    try:
+        user_id = subscription_data.get('user_id')
+        endpoint = subscription_data.get('endpoint')
+        keys = subscription_data.get('keys', {})
+        device_info = subscription_data.get('device_info', {})
+        
+        if not user_id or not endpoint:
+            raise HTTPException(status_code=400, detail="user_id and endpoint required")
+        
+        # Store push subscription
+        subscription = PushSubscription(
+            user_id=user_id,
+            endpoint=endpoint,
+            keys=keys,
+            device_info=device_info
+        )
+        
+        await db.push_subscriptions.insert_one(subscription.dict())
+        
+        return {"message": "Push notification subscription created successfully"}
+        
+    except Exception as e:
+        logging.error(f"Subscribe push notifications error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mobile/sync/offline-data")
+async def sync_offline_data(sync_data: dict):
+    """Sync offline data when coming back online"""
+    try:
+        user_id = sync_data.get('user_id')
+        offline_data = sync_data.get('offline_data', {})
+        
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id required")
+        
+        sync_results = {
+            "synced_items": 0,
+            "failed_items": 0,
+            "conflicts": []
+        }
+        
+        # Process offline messages
+        if 'messages' in offline_data:
+            for message in offline_data['messages']:
+                try:
+                    # Store offline message
+                    message_doc = {
+                        "id": message.get('id', str(uuid.uuid4())),
+                        "user_id": user_id,
+                        "content": message.get('content'),
+                        "created_at": message.get('timestamp', datetime.now(timezone.utc)),
+                        "offline_created": True
+                    }
+                    
+                    await db.chat_messages.insert_one(message_doc)
+                    sync_results["synced_items"] += 1
+                    
+                except Exception as e:
+                    sync_results["failed_items"] += 1
+                    logging.error(f"Failed to sync message: {e}")
+        
+        # Process offline settings
+        if 'settings' in offline_data:
+            try:
+                await db.user_settings.update_one(
+                    {"user_id": user_id},
+                    {"$set": offline_data['settings']},
+                    upsert=True
+                )
+                sync_results["synced_items"] += 1
+            except Exception as e:
+                sync_results["failed_items"] += 1
+        
+        # Update sync status
+        await db.mobile_configs.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "sync_status": "synced",
+                    "last_sync": datetime.now(timezone.utc),
+                    "offline_data": {}  # Clear offline data after sync
+                }
+            }
+        )
+        
+        return {
+            "message": "Offline data synchronized successfully",
+            "sync_results": sync_results
+        }
+        
+    except Exception as e:
+        logging.error(f"Sync offline data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/mobile/data/lightweight/{user_id}")
+async def get_lightweight_data(user_id: str):
+    """Get lightweight data optimized for mobile"""
+    try:
+        # Get essential data with minimal payload
+        user_data = await db.users.find_one({"id": user_id}, {
+            "id": 1, "username": 1, "email": 1, "_id": 0
+        })
+        
+        # Get recent messages (last 20)
+        messages = await db.chat_messages.find(
+            {"user_id": user_id}
+        ).sort("created_at", -1).limit(20).to_list(length=None)
+        
+        # Remove unnecessary fields for mobile
+        lightweight_messages = []
+        for msg in messages:
+            lightweight_messages.append({
+                "id": msg.get("id"),
+                "content": msg.get("content", "")[:200],  # Truncate long messages
+                "created_at": msg.get("created_at"),
+                "sender": msg.get("sender", "user")
+            })
+        
+        # Get basic settings
+        settings = await db.user_settings.find_one(
+            {"user_id": user_id},
+            {"theme": 1, "language": 1, "_id": 0}
+        )
+        
+        return {
+            "user": user_data,
+            "messages": lightweight_messages,
+            "settings": settings or {"theme": "auto", "language": "en"},
+            "data_size": "lightweight"
+        }
+        
+    except Exception as e:
+        logging.error(f"Get lightweight data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
