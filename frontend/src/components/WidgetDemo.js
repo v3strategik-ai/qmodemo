@@ -9,7 +9,7 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { ArrowLeft, Bot, Send, Settings, Upload, Zap, Brain, MessageSquare, FileText, Sparkles, BarChart3, Target, Mic, Volume2, Users, Workflow, Layers, Smartphone, Code, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Bot, Send, Settings, Upload, Zap, Brain, MessageSquare, FileText, Sparkles, BarChart3, Target, Mic, Volume2, Users, Workflow, Layers, Smartphone, Code, TrendingUp, Shield } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import OnboardingTour from './OnboardingTour';
