@@ -1071,6 +1071,11 @@ const WidgetDemo = () => {
               <WorkflowBuilder currentUser={currentUser} />
             </TabsContent>
 
+            {/* Enterprise Authentication & Security Tab */}
+            <TabsContent value="enterprise-auth" className="mt-6">
+              <EnterpriseAuth />
+            </TabsContent>
+
             {/* Beta Testing Tab */}
             <TabsContent value="beta-testing" className="mt-6">
               <div className="space-y-6">
