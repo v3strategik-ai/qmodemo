@@ -39,6 +39,10 @@ import GuidedTour from './GuidedTour';
 import BetaAnalyticsDashboard from './BetaAnalyticsDashboard';
 import { FeedbackButton } from './FeedbackWidget';
 
+// Advanced Features (Options E & F)
+import AdvancedAIManager from './AdvancedAIManager';
+import EnhancedAnalyticsDashboard from './EnhancedAnalyticsDashboard';
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
