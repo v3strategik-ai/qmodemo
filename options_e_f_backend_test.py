@@ -560,7 +560,10 @@ class OptionsEFAPITester:
         )
         
         if success and response:
-            integrations = response.get('integrations', [])
+            if isinstance(response, list):
+                integrations = response
+            else:
+                integrations = response.get('integrations', [])
             print(f"   Found {len(integrations)} marketplace integrations")
             
             if len(integrations) > 0:
