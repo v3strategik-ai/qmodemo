@@ -3467,9 +3467,8 @@ async def execute_enhanced_workflow(execution_data: dict):
         # Create execution record
         execution = WorkflowExecution(
             workflow_id=workflow_id,
-            user_id=user_id,
-            execution_data=input_data,
-            current_node=workflow["nodes"][0]["id"] if workflow["nodes"] else None
+            trigger_data=input_data,
+            current_node_id=workflow["nodes"][0]["id"] if workflow["nodes"] else None
         )
         
         await db.workflow_executions.insert_one(execution.dict())
