@@ -3749,7 +3749,7 @@ async def get_workflow_executions(workflow_id: str, user_id: str, limit: int = 5
         logging.error(f"Get workflow executions error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve workflow executions")
 
-@api_router.get("/workflows/{workflow_id}/metrics")
+@api_router.get("/workflows/{workflow_id}/metrics/{user_id}")
 async def get_workflow_metrics(workflow_id: str, user_id: str):
     """Get workflow performance metrics"""
     try:
