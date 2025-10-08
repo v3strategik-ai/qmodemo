@@ -6621,6 +6621,21 @@ class PredictiveModel(BaseModel):
 async def create_analytics_report(report_data: dict):
     """Create custom analytics report"""
     try:
+        # Validate required fields
+        required_fields = ['name', 'user_id', 'report_type']
+        for field in required_fields:
+            if field not in report_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        # Set defaults for optional fields
+        report_data.setdefault('description', '')
+        report_data.setdefault('data_sources', [])
+        report_data.setdefault('filters', {})
+        report_data.setdefault('visualization_config', {})
+        report_data.setdefault('schedule', None)
+        report_data.setdefault('last_generated', None)
+        report_data.setdefault('is_public', False)
+        
         report = AnalyticsReport(**report_data)
         report_dict = report.dict()
         
@@ -6628,6 +6643,8 @@ async def create_analytics_report(report_data: dict):
         
         return {"message": "Analytics report created successfully", "report_id": report.id}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Create analytics report error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
