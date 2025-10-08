@@ -8180,6 +8180,382 @@ curl -X GET \\
         logging.error(f"Get code examples error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# =============================================
+# ENTERPRISE SECURITY & COMPLIANCE
+# =============================================
+
+import pyotp
+import qrcode
+import io
+import base64
+from cryptography.fernet import Fernet
+import re
+from datetime import timedelta
+
+# Enterprise Security Models
+class SSOProvider(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    provider_type: str = "saml"  # saml, oauth2, oidc
+    configuration: Dict[str, Any] = {}
+    metadata_url: Optional[str] = None
+    entity_id: str
+    sso_url: str
+    certificate: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MFADevice(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    device_type: str = "totp"  # totp, sms, hardware_key
+    device_name: str
+    secret_key: Optional[str] = None
+    backup_codes: List[str] = []
+    is_verified: bool = False
+    last_used: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EnterpriseRole(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    permissions: List[str] = []
+    resource_permissions: Dict[str, List[str]] = {}  # resource_type: [permissions]
+    department: Optional[str] = None
+    is_system_role: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ComplianceEvent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    event_type: str  # gdpr_request, sox_audit, security_incident, access_violation
+    user_id: Optional[str] = None
+    resource: str
+    action: str
+    compliance_framework: str  # gdpr, sox, iso27001, hipaa
+    risk_level: str = "low"  # low, medium, high, critical
+    details: Dict[str, Any] = {}
+    remediation_required: bool = False
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DataClassification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    data_type: str
+    classification_level: str  # public, internal, confidential, restricted
+    pii_detected: bool = False
+    pii_types: List[str] = []  # email, phone, ssn, credit_card
+    encryption_required: bool = False
+    retention_period: Optional[int] = None  # days
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Enterprise Security Utilities
+class EnterpriseSecurityManager:
+    def __init__(self):
+        self.encryption_key = Fernet.generate_key()
+        self.cipher = Fernet(self.encryption_key)
+        
+    def generate_totp_secret(self) -> str:
+        """Generate TOTP secret for Google Authenticator"""
+        return pyotp.random_base32()
+    
+    def generate_qr_code(self, user_email: str, secret: str, issuer: str = "modQ") -> str:
+        """Generate QR code for TOTP setup"""
+        totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+            name=user_email,
+            issuer_name=issuer
+        )
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(totp_uri)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        
+        return base64.b64encode(buffer.getvalue()).decode()
+    
+    def verify_totp(self, secret: str, token: str) -> bool:
+        """Verify TOTP token"""
+        totp = pyotp.TOTP(secret)
+        return totp.verify(token, valid_window=1)
+    
+    def encrypt_sensitive_data(self, data: str) -> str:
+        """Encrypt sensitive data"""
+        return self.cipher.encrypt(data.encode()).decode()
+    
+    def decrypt_sensitive_data(self, encrypted_data: str) -> str:
+        """Decrypt sensitive data"""
+        return self.cipher.decrypt(encrypted_data.encode()).decode()
+    
+    def detect_pii(self, text: str) -> Dict[str, List[str]]:
+        """Detect PII in text using regex patterns"""
+        pii_patterns = {
+            'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            'phone': r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
+            'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
+            'credit_card': r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b'
+        }
+        
+        detected = {}
+        for pii_type, pattern in pii_patterns.items():
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                detected[pii_type] = matches
+        
+        return detected
+    
+    def generate_backup_codes(self, count: int = 10) -> List[str]:
+        """Generate backup codes for MFA"""
+        return [secrets.token_hex(4) for _ in range(count)]
+
+enterprise_security = EnterpriseSecurityManager()
+
+# SSO Configuration Endpoints
+@app.post("/api/enterprise/sso/configure")
+async def configure_sso_provider(sso_data: dict):
+    """Configure SAML SSO provider"""
+    try:
+        # Validate required SAML fields
+        required_fields = ['name', 'entity_id', 'sso_url']
+        for field in required_fields:
+            if field not in sso_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        # Set defaults
+        sso_data.setdefault('provider_type', 'saml')
+        sso_data.setdefault('configuration', {})
+        sso_data.setdefault('is_active', True)
+        
+        sso_provider = SSOProvider(**sso_data)
+        await db.sso_providers.insert_one(sso_provider.dict())
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="sso_configuration",
+            resource="sso_providers",
+            action="configure",
+            compliance_framework="iso27001",
+            details={"provider_name": sso_data['name'], "provider_type": sso_data['provider_type']}
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {"message": "SSO provider configured successfully", "provider_id": sso_provider.id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Configure SSO error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/enterprise/sso/providers")
+async def get_sso_providers():
+    """Get configured SSO providers"""
+    try:
+        providers = await db.sso_providers.find({"is_active": True}).to_list(length=None)
+        
+        # Remove sensitive data
+        for provider in providers:
+            if '_id' in provider:
+                del provider['_id']
+            if 'certificate' in provider:
+                provider['certificate'] = "[REDACTED]"
+        
+        return {"providers": providers}
+        
+    except Exception as e:
+        logging.error(f"Get SSO providers error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/enterprise/sso/login")
+async def sso_login(login_data: dict):
+    """Mock SAML SSO login for testing"""
+    try:
+        provider_id = login_data.get('provider_id')
+        saml_response = login_data.get('saml_response')  # In real implementation, parse SAML
+        
+        # Mock SAML validation (in production, use proper SAML library)
+        if not provider_id or not saml_response:
+            raise HTTPException(status_code=400, detail="Missing provider_id or saml_response")
+        
+        # Mock user data from SAML
+        mock_user_data = {
+            "email": "john.doe@enterprise.com",
+            "first_name": "John",
+            "last_name": "Doe",
+            "department": "Engineering",
+            "role": "Developer"
+        }
+        
+        # Create or update user
+        user_id = str(uuid.uuid4())
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="sso_login",
+            user_id=user_id,
+            resource="authentication",
+            action="login",
+            compliance_framework="sox",
+            details={"provider_id": provider_id, "method": "saml_sso"}
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {
+            "message": "SSO login successful",
+            "user_data": mock_user_data,
+            "user_id": user_id,
+            "requires_mfa": True  # Enterprise always requires MFA
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"SSO login error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# MFA Endpoints
+@app.post("/api/enterprise/mfa/setup")
+async def setup_mfa_device(mfa_data: dict):
+    """Setup MFA device (TOTP/Google Authenticator)"""
+    try:
+        user_id = mfa_data.get('user_id')
+        device_name = mfa_data.get('device_name', 'Google Authenticator')
+        
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id required")
+        
+        # Generate TOTP secret
+        secret = enterprise_security.generate_totp_secret()
+        
+        # Generate backup codes
+        backup_codes = enterprise_security.generate_backup_codes()
+        
+        # Create MFA device
+        mfa_device = MFADevice(
+            user_id=user_id,
+            device_type="totp",
+            device_name=device_name,
+            secret_key=secret,
+            backup_codes=backup_codes,
+            is_verified=False
+        )
+        
+        await db.mfa_devices.insert_one(mfa_device.dict())
+        
+        # Generate QR code
+        user_email = f"user_{user_id}@modq.com"  # In production, get real email
+        qr_code = enterprise_security.generate_qr_code(user_email, secret)
+        
+        # Log compliance event
+        compliance_event = ComplianceEvent(
+            event_type="mfa_setup",
+            user_id=user_id,
+            resource="mfa_devices",
+            action="create",
+            compliance_framework="iso27001",
+            details={"device_type": "totp", "device_name": device_name}
+        )
+        await db.compliance_events.insert_one(compliance_event.dict())
+        
+        return {
+            "message": "MFA device setup initiated",
+            "device_id": mfa_device.id,
+            "qr_code": qr_code,
+            "backup_codes": backup_codes,
+            "manual_entry_key": secret
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Setup MFA error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/enterprise/mfa/verify")
+async def verify_mfa_device(verify_data: dict):
+    """Verify MFA device with TOTP token"""
+    try:
+        device_id = verify_data.get('device_id')
+        token = verify_data.get('token')
+        
+        if not device_id or not token:
+            raise HTTPException(status_code=400, detail="device_id and token required")
+        
+        # Get MFA device
+        device = await db.mfa_devices.find_one({"id": device_id})
+        if not device:
+            raise HTTPException(status_code=404, detail="MFA device not found")
+        
+        # Verify TOTP token
+        is_valid = enterprise_security.verify_totp(device['secret_key'], token)
+        
+        if is_valid:
+            # Mark device as verified
+            await db.mfa_devices.update_one(
+                {"id": device_id},
+                {
+                    "$set": {
+                        "is_verified": True,
+                        "last_used": datetime.now(timezone.utc)
+                    }
+                }
+            )
+            
+            # Log compliance event
+            compliance_event = ComplianceEvent(
+                event_type="mfa_verification",
+                user_id=device['user_id'],
+                resource="mfa_devices",
+                action="verify",
+                compliance_framework="sox",
+                details={"device_id": device_id, "verification_status": "success"}
+            )
+            await db.compliance_events.insert_one(compliance_event.dict())
+            
+            return {"message": "MFA device verified successfully", "verified": True}
+        else:
+            # Log failed verification
+            compliance_event = ComplianceEvent(
+                event_type="mfa_verification_failed",
+                user_id=device['user_id'],
+                resource="mfa_devices",
+                action="verify_failed",
+                compliance_framework="sox",
+                risk_level="medium",
+                details={"device_id": device_id, "verification_status": "failed"}
+            )
+            await db.compliance_events.insert_one(compliance_event.dict())
+            
+            return {"message": "Invalid MFA token", "verified": False}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Verify MFA error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/enterprise/mfa/devices/{user_id}")
+async def get_user_mfa_devices(user_id: str):
+    """Get user's MFA devices"""
+    try:
+        devices = await db.mfa_devices.find({"user_id": user_id}).to_list(length=None)
+        
+        # Remove sensitive data
+        for device in devices:
+            if '_id' in device:
+                del device['_id']
+            if 'secret_key' in device:
+                device['secret_key'] = "[REDACTED]"
+            if 'backup_codes' in device:
+                device['backup_codes'] = f"[{len(device.get('backup_codes', []))} codes available]"
+        
+        return {"devices": devices}
+        
+    except Exception as e:
+        logging.error(f"Get MFA devices error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
