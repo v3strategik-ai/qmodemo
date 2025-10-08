@@ -7631,6 +7631,482 @@ async def validate_user_session(session_data: dict):
         logging.error(f"Validate session error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# =============================================
+# F4: DOCUMENTATION & API GUIDES
+# =============================================
+
+class APIEndpoint(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    path: str
+    method: str  # GET, POST, PUT, DELETE
+    summary: str
+    description: str
+    parameters: List[Dict[str, Any]] = []
+    request_body: Optional[Dict[str, Any]] = None
+    responses: Dict[str, Any] = {}
+    examples: List[Dict[str, Any]] = []
+    category: str
+    tags: List[str] = []
+    authentication_required: bool = True
+
+class DocumentationPage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4))
+    title: str
+    content: str
+    category: str
+    order: int = 0
+    parent_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# F4: Documentation Endpoints
+@app.get("/api/docs/api-reference")
+async def get_api_reference():
+    """Get complete API reference documentation"""
+    try:
+        api_endpoints = [
+            # Authentication endpoints
+            APIEndpoint(
+                path="/api/auth/register",
+                method="POST", 
+                summary="User Registration",
+                description="Register a new user account",
+                request_body={
+                    "type": "object",
+                    "properties": {
+                        "username": {"type": "string", "required": True},
+                        "email": {"type": "string", "format": "email", "required": True},
+                        "password": {"type": "string", "minLength": 8, "required": True},
+                        "role": {"type": "string", "enum": ["admin", "employee"], "default": "employee"}
+                    }
+                },
+                responses={
+                    "200": {"description": "User registered successfully", "example": {"message": "Registration successful", "user_id": "uuid"}},
+                    "400": {"description": "Invalid input data"},
+                    "409": {"description": "User already exists"}
+                },
+                examples=[
+                    {
+                        "name": "Basic Registration",
+                        "request": {
+                            "username": "john_doe",
+                            "email": "john@example.com",
+                            "password": "SecurePass123!",
+                            "role": "employee"
+                        },
+                        "response": {"message": "Registration successful", "user_id": "12345"}
+                    }
+                ],
+                category="Authentication",
+                tags=["auth", "registration"],
+                authentication_required=False
+            ).dict(),
+            
+            # Chat endpoints
+            APIEndpoint(
+                path="/api/chat",
+                method="POST",
+                summary="Send Chat Message",
+                description="Send a message to the AI chat system",
+                request_body={
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string", "required": True},
+                        "user_id": {"type": "string", "required": True},
+                        "session_id": {"type": "string"},
+                        "context": {"type": "object"}
+                    }
+                },
+                responses={
+                    "200": {"description": "Chat response generated", "example": {"response": "AI response text", "session_id": "uuid"}},
+                    "400": {"description": "Invalid message format"},
+                    "401": {"description": "Authentication required"}
+                },
+                category="Chat",
+                tags=["chat", "ai"]
+            ).dict(),
+            
+            # Beta Testing endpoints
+            APIEndpoint(
+                path="/api/beta/roles/available",
+                method="GET",
+                summary="Get Available Roles",
+                description="Get list of available user roles for testing",
+                responses={
+                    "200": {"description": "List of available roles", "example": {"roles": [{"name": "CEO", "description": "Executive dashboard"}]}}
+                },
+                category="Beta Testing",
+                tags=["beta", "roles"]
+            ).dict(),
+            
+            # AI Integration endpoints
+            APIEndpoint(
+                path="/api/ai/chat/multi-llm",
+                method="POST",
+                summary="Multi-LLM Chat",
+                description="Chat with multiple AI providers (OpenAI, Anthropic, Gemini)",
+                request_body={
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string", "required": True},
+                        "user_id": {"type": "string", "required": True},
+                        "provider": {"type": "string", "enum": ["openai", "anthropic", "gemini"], "default": "openai"},
+                        "model": {"type": "string", "default": "gpt-4o-mini"}
+                    }
+                },
+                responses={
+                    "200": {"description": "AI response from selected provider"}
+                },
+                category="AI Integration",
+                tags=["ai", "llm", "chat"]
+            ).dict(),
+            
+            # Analytics endpoints
+            APIEndpoint(
+                path="/api/analytics/reports/create",
+                method="POST",
+                summary="Create Analytics Report",
+                description="Create custom analytics report with visualizations",
+                request_body={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "required": True},
+                        "description": {"type": "string"},
+                        "user_id": {"type": "string", "required": True},
+                        "report_type": {"type": "string", "enum": ["dashboard", "chart", "table"], "required": True}
+                    }
+                },
+                category="Analytics",
+                tags=["analytics", "reports"]
+            ).dict()
+        ]
+        
+        # Group endpoints by category
+        grouped_endpoints = {}
+        for endpoint in api_endpoints:
+            category = endpoint["category"]
+            if category not in grouped_endpoints:
+                grouped_endpoints[category] = []
+            grouped_endpoints[category].append(endpoint)
+        
+        return {
+            "api_reference": grouped_endpoints,
+            "base_url": "https://ai-business-intel.preview.emergentagent.com",
+            "authentication": {
+                "type": "Bearer Token",
+                "description": "Include 'Authorization: Bearer <token>' header for authenticated endpoints"
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Get API reference error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/docs/guides")
+async def get_documentation_guides():
+    """Get user guides and tutorials"""
+    try:
+        guides = [
+            DocumentationPage(
+                title="Getting Started",
+                content="""
+# Getting Started with modQ
+
+Welcome to modQ - Modular Quantum Business Intelligence! This guide will help you get up and running quickly.
+
+## Quick Start Steps
+
+1. **Register your account** at `/widget-demo`
+2. **Complete the welcome tour** to familiarize yourself with key features
+3. **Try different user roles** using the Beta Testing dashboard
+4. **Start chatting** with the AI assistant for business insights
+
+## Key Features
+
+### AI Chat Assistant
+- Natural language queries for business insights
+- Multi-LLM support (OpenAI, Anthropic, Gemini)
+- Session-based conversations
+
+### Voice Interface  
+- Speech-to-text input
+- Text-to-speech responses
+- Hands-free operation
+
+### Analytics Dashboard
+- Real-time business metrics
+- Custom report generation
+- Predictive analytics
+
+### Workflow Automation
+- Visual workflow builder
+- AI-powered suggestions
+- Advanced node types
+
+## Need Help?
+
+- Use the guided tours for step-by-step instructions
+- Check the API documentation for technical details
+- Submit feedback using the feedback widgets throughout the app
+                """,
+                category="Getting Started",
+                order=1
+            ).dict(),
+            
+            DocumentationPage(
+                title="API Integration Guide",
+                content="""
+# API Integration Guide
+
+Learn how to integrate with modQ's powerful APIs.
+
+## Authentication
+
+All API requests require authentication using Bearer tokens:
+
+```bash
+curl -H "Authorization: Bearer <your_token>" \\
+     https://ai-business-intel.preview.emergentagent.com/api/endpoint
+```
+
+## Chat API Usage
+
+Send messages to the AI chat system:
+
+```javascript
+const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    message: "What are our top performing products?",
+    user_id: "your_user_id"
+  })
+});
+```
+
+## Multi-LLM Integration
+
+Switch between AI providers:
+
+```javascript
+const aiResponse = await fetch('/api/ai/chat/multi-llm', {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify({
+    message: "Analyze this sales data",
+    provider: "openai", // or "anthropic", "gemini"
+    model: "gpt-4o",
+    user_id: "your_user_id"
+  })
+});
+```
+
+## Error Handling
+
+Always handle API errors gracefully:
+
+```javascript
+try {
+  const response = await fetch('/api/endpoint');
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  const data = await response.json();
+} catch (error) {
+  console.error('API Error:', error);
+}
+```
+                """,
+                category="API Integration",
+                order=2
+            ).dict(),
+            
+            DocumentationPage(
+                title="Beta Testing Features",
+                content="""
+# Beta Testing Features
+
+Explore modQ's beta testing optimization features.
+
+## Role Switcher
+
+Test the application from different user perspectives:
+
+- **CEO**: Executive dashboard and strategic insights
+- **Manager**: Team management and workflow oversight  
+- **Employee**: Daily tasks and simplified interface
+- **Developer**: Technical features and API access
+- **Sales Rep**: CRM integration and sales analytics
+- **Customer Success**: Support tools and customer insights
+
+## Guided Tours
+
+Interactive tours help new users learn the platform:
+
+- **Welcome Tour**: Basic platform introduction
+- **Role-specific Tours**: Tailored to each user role
+- **Feature Tours**: Deep dives into specific capabilities
+
+## Feedback Collection
+
+Provide feedback to improve the platform:
+
+- **Star Ratings**: Quick 1-5 star feedback
+- **Comments**: Detailed feedback and suggestions
+- **Bug Reports**: Report issues and problems
+- **Feature Requests**: Suggest new improvements
+
+## Usage Analytics
+
+Track and analyze feature usage:
+
+- **User Activity**: Monitor user engagement patterns
+- **Feature Usage**: See which features are most popular
+- **Performance Metrics**: Track system performance
+- **Feedback Analysis**: Aggregate user feedback data
+
+## Getting Beta Access
+
+Beta testing features are automatically available to all users. Use the Beta Testing tab to access these tools.
+                """,
+                category="Beta Testing",
+                order=3
+            ).dict()
+        ]
+        
+        return {"guides": guides}
+        
+    except Exception as e:
+        logging.error(f"Get documentation guides error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/docs/examples")
+async def get_code_examples():
+    """Get code examples for API usage"""
+    try:
+        examples = {
+            "javascript": {
+                "chat": '''
+// Send a chat message
+const sendMessage = async (message, userId) => {
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        message: message,
+        user_id: userId
+      })
+    });
+    
+    const data = await response.json();
+    return data.response;
+  } catch (error) {
+    console.error('Chat error:', error);
+  }
+};
+                ''',
+                "multi_llm": '''
+// Use different AI providers
+const chatWithAI = async (message, provider = 'openai') => {
+  const response = await fetch('/api/ai/chat/multi-llm', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({
+      message: message,
+      provider: provider, // 'openai', 'anthropic', 'gemini'
+      model: provider === 'openai' ? 'gpt-4o' : 
+             provider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
+             'gemini-2.0-flash',
+      user_id: userId
+    })
+  });
+  
+  return await response.json();
+};
+                '''
+            },
+            "python": {
+                "chat": '''
+import requests
+
+def send_chat_message(message, user_id, token):
+    """Send a message to the AI chat system"""
+    
+    url = "https://ai-business-intel.preview.emergentagent.com/api/chat"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "message": message,
+        "user_id": user_id
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 200:
+        return response.json()["response"]
+    else:
+        raise Exception(f"API Error: {response.status_code}")
+                ''',
+                "analytics": '''
+def create_analytics_report(name, report_type, user_id, token):
+    """Create a custom analytics report"""
+    
+    url = "https://ai-business-intel.preview.emergentagent.com/api/analytics/reports/create"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "name": name,
+        "description": f"Custom {report_type} report",
+        "user_id": user_id,
+        "report_type": report_type  # "dashboard", "chart", "table"
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    return response.json()
+                '''
+            },
+            "curl": {
+                "auth": '''
+# Register a new user
+curl -X POST \\
+  https://ai-business-intel.preview.emergentagent.com/api/auth/register \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "username": "john_doe",
+    "email": "john@example.com", 
+    "password": "SecurePass123!",
+    "role": "employee"
+  }'
+                ''',
+                "beta_roles": '''
+# Get available beta testing roles
+curl -X GET \\
+  https://ai-business-intel.preview.emergentagent.com/api/beta/roles/available \\
+  -H "Authorization: Bearer your_token_here"
+                '''
+            }
+        }
+        
+        return {"examples": examples}
+        
+    except Exception as e:
+        logging.error(f"Get code examples error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
