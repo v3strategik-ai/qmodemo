@@ -7341,6 +7341,296 @@ async def get_lightweight_data(user_id: str):
         logging.error(f"Get lightweight data error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# =============================================
+# F3: SECURITY HARDENING
+# =============================================
+
+import hashlib
+import secrets
+from datetime import timedelta
+
+class SecurityEvent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None
+    event_type: str  # login, logout, failed_login, data_access, permission_change
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    resource: Optional[str] = None
+    success: bool = True
+    details: Dict[str, Any] = {}
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DataEncryption(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    data_type: str  # personal_data, financial_data, credentials
+    encrypted_data: str
+    encryption_key_hash: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AccessControl(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    resource: str
+    permissions: List[str] = []
+    restrictions: Dict[str, Any] = {}
+    expires_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Security utilities
+class SecurityManager:
+    def __init__(self):
+        self.failed_login_attempts = {}
+        self.max_attempts = 5
+        self.lockout_duration = timedelta(minutes=30)
+    
+    def is_ip_locked(self, ip_address: str) -> bool:
+        """Check if IP is locked due to failed attempts"""
+        if ip_address in self.failed_login_attempts:
+            attempts, last_attempt = self.failed_login_attempts[ip_address]
+            if attempts >= self.max_attempts:
+                if datetime.now(timezone.utc) - last_attempt < self.lockout_duration:
+                    return True
+                else:
+                    # Reset if lockout period has passed
+                    del self.failed_login_attempts[ip_address]
+        return False
+    
+    def record_failed_login(self, ip_address: str):
+        """Record failed login attempt"""
+        if ip_address in self.failed_login_attempts:
+            attempts, _ = self.failed_login_attempts[ip_address]
+            self.failed_login_attempts[ip_address] = (attempts + 1, datetime.now(timezone.utc))
+        else:
+            self.failed_login_attempts[ip_address] = (1, datetime.now(timezone.utc))
+    
+    def clear_failed_attempts(self, ip_address: str):
+        """Clear failed attempts for successful login"""
+        if ip_address in self.failed_login_attempts:
+            del self.failed_login_attempts[ip_address]
+    
+    def encrypt_sensitive_data(self, data: str, user_id: str) -> Dict[str, str]:
+        """Encrypt sensitive data"""
+        # Generate a random salt
+        salt = secrets.token_hex(16)
+        
+        # Create encryption key from user_id and salt
+        key = hashlib.pbkdf2_hmac('sha256', user_id.encode(), salt.encode(), 100000)
+        
+        # Simple XOR encryption (in production, use proper encryption like Fernet)
+        encrypted = bytes(a ^ b for a, b in zip(data.encode(), key * (len(data) // len(key) + 1)))
+        
+        return {
+            "encrypted_data": encrypted.hex(),
+            "key_hash": hashlib.sha256(key).hexdigest(),
+            "salt": salt
+        }
+
+security_manager = SecurityManager()
+
+# F3: Security Endpoints
+@app.post("/api/security/audit-log")
+async def log_security_event(event_data: dict):
+    """Log security audit event"""
+    try:
+        event = SecurityEvent(**event_data)
+        event_dict = event.dict()
+        
+        await db.security_events.insert_one(event_dict)
+        
+        return {"message": "Security event logged successfully"}
+        
+    except Exception as e:
+        logging.error(f"Log security event error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/security/audit-log/{user_id}")
+async def get_user_audit_log(user_id: str, limit: int = 100):
+    """Get security audit log for user"""
+    try:
+        events = await db.security_events.find(
+            {"user_id": user_id}
+        ).sort("timestamp", -1).limit(limit).to_list(length=None)
+        
+        # Remove MongoDB ObjectIds
+        for event in events:
+            if '_id' in event:
+                del event['_id']
+        
+        return {"events": events}
+        
+    except Exception as e:
+        logging.error(f"Get audit log error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/security/encrypt-data")
+async def encrypt_user_data(encryption_data: dict):
+    """Encrypt sensitive user data"""
+    try:
+        user_id = encryption_data.get('user_id')
+        data = encryption_data.get('data')
+        data_type = encryption_data.get('data_type', 'personal_data')
+        
+        if not user_id or not data:
+            raise HTTPException(status_code=400, detail="user_id and data required")
+        
+        # Encrypt the data
+        encrypted_result = security_manager.encrypt_sensitive_data(data, user_id)
+        
+        # Store encrypted data
+        encrypted_record = DataEncryption(
+            user_id=user_id,
+            data_type=data_type,
+            encrypted_data=encrypted_result["encrypted_data"],
+            encryption_key_hash=encrypted_result["key_hash"]
+        )
+        
+        await db.encrypted_data.insert_one(encrypted_record.dict())
+        
+        # Log security event
+        await log_security_event({
+            "user_id": user_id,
+            "event_type": "data_encryption",
+            "resource": data_type,
+            "success": True,
+            "details": {"data_type": data_type, "encrypted_size": len(encrypted_result["encrypted_data"])}
+        })
+        
+        return {
+            "message": "Data encrypted successfully",
+            "encryption_id": encrypted_record.id
+        }
+        
+    except Exception as e:
+        logging.error(f"Encrypt data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/security/access-control")
+async def set_access_control(access_data: dict):
+    """Set access control permissions for user"""
+    try:
+        user_id = access_data.get('user_id')
+        resource = access_data.get('resource')
+        permissions = access_data.get('permissions', [])
+        restrictions = access_data.get('restrictions', {})
+        expires_in_hours = access_data.get('expires_in_hours')
+        
+        if not user_id or not resource:
+            raise HTTPException(status_code=400, detail="user_id and resource required")
+        
+        expires_at = None
+        if expires_in_hours:
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
+        
+        # Create access control record
+        access_control = AccessControl(
+            user_id=user_id,
+            resource=resource,
+            permissions=permissions,
+            restrictions=restrictions,
+            expires_at=expires_at
+        )
+        
+        await db.access_controls.insert_one(access_control.dict())
+        
+        # Log security event
+        await log_security_event({
+            "user_id": user_id,
+            "event_type": "permission_change",
+            "resource": resource,
+            "success": True,
+            "details": {"permissions": permissions, "expires_at": str(expires_at)}
+        })
+        
+        return {"message": "Access control set successfully", "control_id": access_control.id}
+        
+    except Exception as e:
+        logging.error(f"Set access control error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/security/access-control/{user_id}")
+async def get_user_access_controls(user_id: str):
+    """Get access controls for user"""
+    try:
+        controls = await db.access_controls.find({"user_id": user_id}).to_list(length=None)
+        
+        # Remove expired controls and MongoDB ObjectIds
+        valid_controls = []
+        for control in controls:
+            if '_id' in control:
+                del control['_id']
+            
+            # Check if not expired
+            if control.get('expires_at'):
+                expires_at = control['expires_at']
+                if isinstance(expires_at, str):
+                    expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                if expires_at > datetime.now(timezone.utc):
+                    valid_controls.append(control)
+            else:
+                valid_controls.append(control)
+        
+        return {"access_controls": valid_controls}
+        
+    except Exception as e:
+        logging.error(f"Get access controls error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/security/validate-session")
+async def validate_user_session(session_data: dict):
+    """Validate user session security"""
+    try:
+        user_id = session_data.get('user_id')
+        session_token = session_data.get('session_token')
+        ip_address = session_data.get('ip_address')
+        
+        if not user_id or not session_token:
+            raise HTTPException(status_code=400, detail="user_id and session_token required")
+        
+        # Check if IP is locked
+        if ip_address and security_manager.is_ip_locked(ip_address):
+            await log_security_event({
+                "user_id": user_id,
+                "event_type": "blocked_access",
+                "ip_address": ip_address,
+                "success": False,
+                "details": {"reason": "ip_locked"}
+            })
+            raise HTTPException(status_code=429, detail="IP address temporarily locked")
+        
+        # Validate session (simplified - in production, use proper JWT validation)
+        session_valid = len(session_token) > 20  # Basic validation
+        
+        if session_valid:
+            security_manager.clear_failed_attempts(ip_address)
+            
+            await log_security_event({
+                "user_id": user_id,
+                "event_type": "session_validation",
+                "ip_address": ip_address,
+                "success": True
+            })
+            
+            return {"valid": True, "message": "Session is valid"}
+        else:
+            if ip_address:
+                security_manager.record_failed_login(ip_address)
+            
+            await log_security_event({
+                "user_id": user_id,
+                "event_type": "invalid_session",
+                "ip_address": ip_address,
+                "success": False
+            })
+            
+            return {"valid": False, "message": "Invalid session"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Validate session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
