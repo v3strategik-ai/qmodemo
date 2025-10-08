@@ -3728,7 +3728,7 @@ async def execute_workflow(execution_request: WorkflowExecuteRequest):
         logging.error(f"Execute workflow error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to execute workflow")
 
-@api_router.get("/workflows/{workflow_id}/executions", response_model=List[WorkflowExecution])
+@api_router.get("/workflows/{workflow_id}/executions/{user_id}", response_model=List[WorkflowExecution])
 async def get_workflow_executions(workflow_id: str, user_id: str, limit: int = 50):
     """Get execution history for a workflow"""
     try:
