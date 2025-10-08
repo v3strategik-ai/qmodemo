@@ -3,10 +3,10 @@
 ## 🎯 **Access Credentials & URLs**
 
 ### **Live Application URLs:**
-- **Landing Page**: https://ai-business-intel.preview.emergentagent.com
-- **Widget Demo**: https://ai-business-intel.preview.emergentagent.com/widget-demo
-- **Enterprise Dashboard**: https://ai-business-intel.preview.emergentagent.com/dashboard
-- **Admin Portal**: https://ai-business-intel.preview.emergentagent.com/admin
+- **Landing Page**: https://modq-saml.preview.emergentagent.com
+- **Widget Demo**: https://modq-saml.preview.emergentagent.com/widget-demo
+- **Enterprise Dashboard**: https://modq-saml.preview.emergentagent.com/dashboard
+- **Admin Portal**: https://modq-saml.preview.emergentagent.com/admin
 
 ### **Admin Portal Credentials:**
 ```

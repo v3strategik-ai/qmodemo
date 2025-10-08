@@ -14,8 +14,8 @@
 - [x] Domain configured: `ai-business-suite.preview.emergentagent.com`
 
 ### **🎯 IMMEDIATE ACCESS:**
-- **Live App**: https://ai-business-intel.preview.emergentagent.com
-- **Admin Portal**: https://ai-business-intel.preview.emergentagent.com/admin
+- **Live App**: https://modq-saml.preview.emergentagent.com
+- **Admin Portal**: https://modq-saml.preview.emergentagent.com/admin
 - **Admin Credentials**: `admin` / `modQ2024!`
 
 ---

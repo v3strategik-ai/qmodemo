@@ -198,9 +198,9 @@ Your modQ platform now offers a **premium beta testing experience** that rivals 
 ## 📞 **ENHANCED ACCESS INFORMATION**
 
 ### **🌐 Live Platform**
-- **Landing**: https://ai-business-intel.preview.emergentagent.com
-- **Widget Demo**: https://ai-business-intel.preview.emergentagent.com/widget-demo
-- **Admin Portal**: https://ai-business-intel.preview.emergentagent.com/admin
+- **Landing**: https://modq-saml.preview.emergentagent.com
+- **Widget Demo**: https://modq-saml.preview.emergentagent.com/widget-demo
+- **Admin Portal**: https://modq-saml.preview.emergentagent.com/admin
 
 ### **🔑 Credentials**
 - **Admin**: `admin` / `modQ2024!`

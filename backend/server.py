@@ -7864,7 +7864,7 @@ async def get_api_reference():
         
         return {
             "api_reference": grouped_endpoints,
-            "base_url": "https://ai-business-intel.preview.emergentagent.com",
+            "base_url": "https://modq-saml.preview.emergentagent.com",
             "authentication": {
                 "type": "Bearer Token",
                 "description": "Include 'Authorization: Bearer <token>' header for authenticated endpoints"
@@ -7939,7 +7939,7 @@ All API requests require authentication using Bearer tokens:
 
 ```bash
 curl -H "Authorization: Bearer <your_token>" \\
-     https://ai-business-intel.preview.emergentagent.com/api/endpoint
+     https://modq-saml.preview.emergentagent.com/api/endpoint
 ```
 
 ## Chat API Usage
@@ -8115,7 +8115,7 @@ import requests
 def send_chat_message(message, user_id, token):
     """Send a message to the AI chat system"""
     
-    url = "https://ai-business-intel.preview.emergentagent.com/api/chat"
+    url = "https://modq-saml.preview.emergentagent.com/api/chat"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -8136,7 +8136,7 @@ def send_chat_message(message, user_id, token):
 def create_analytics_report(name, report_type, user_id, token):
     """Create a custom analytics report"""
     
-    url = "https://ai-business-intel.preview.emergentagent.com/api/analytics/reports/create"
+    url = "https://modq-saml.preview.emergentagent.com/api/analytics/reports/create"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -8156,7 +8156,7 @@ def create_analytics_report(name, report_type, user_id, token):
                 "auth": '''
 # Register a new user
 curl -X POST \\
-  https://ai-business-intel.preview.emergentagent.com/api/auth/register \\
+  https://modq-saml.preview.emergentagent.com/api/auth/register \\
   -H "Content-Type: application/json" \\
   -d '{
     "username": "john_doe",
@@ -8168,7 +8168,7 @@ curl -X POST \\
                 "beta_roles": '''
 # Get available beta testing roles
 curl -X GET \\
-  https://ai-business-intel.preview.emergentagent.com/api/beta/roles/available \\
+  https://modq-saml.preview.emergentagent.com/api/beta/roles/available \\
   -H "Authorization: Bearer your_token_here"
                 '''
             }

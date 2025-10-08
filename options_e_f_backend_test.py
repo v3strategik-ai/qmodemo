@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 class OptionsEFAPITester:
-    def __init__(self, base_url="https://ai-business-intel.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://modq-saml.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
