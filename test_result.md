@@ -1208,8 +1208,6 @@
     - "Enterprise Security - Google Authenticator MFA"
     - "Enterprise Security - Role-Based Access Control"
     - "Enterprise Security - GDPR Compliance"
-    - "Enterprise Security - Authentication UI Component"
-    - "Enterprise Security - Main Navigation Integration"
   stuck_tasks:
     - "Real-time Streaming AI Responses Implementation"
     - "WebSocket Voice Integration (infrastructure issue)"
