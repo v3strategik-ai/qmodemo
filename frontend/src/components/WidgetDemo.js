@@ -769,6 +769,13 @@ const WidgetDemo = () => {
                 AI Agents
                 <Badge variant="outline" className="text-xs ml-1">E2</Badge>
               </TabsTrigger>
+
+              <TabsTrigger value="enhanced-analytics" className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Analytics+
+                <Badge variant="outline" className="text-xs ml-1">E4</Badge>
+              </TabsTrigger>
+
               <TabsTrigger value="integrations" className="flex items-center gap-2">
                 <Layers className="w-4 h-4" />
                 Marketplace
