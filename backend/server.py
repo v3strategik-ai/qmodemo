@@ -6115,6 +6115,22 @@ async def multi_llm_chat(chat_data: dict):
 async def create_ai_agent(agent_data: dict):
     """Create custom AI agent with specific capabilities"""
     try:
+        # Validate required fields
+        required_fields = ['name', 'description', 'user_id', 'system_prompt']
+        for field in required_fields:
+            if field not in agent_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        # Set defaults for optional fields
+        agent_data.setdefault('provider', 'openai')
+        agent_data.setdefault('model', 'gpt-4o-mini')
+        agent_data.setdefault('temperature', 0.7)
+        agent_data.setdefault('max_tokens', 1000)
+        agent_data.setdefault('personality', {})
+        agent_data.setdefault('capabilities', [])
+        agent_data.setdefault('is_active', True)
+        agent_data.setdefault('usage_stats', {})
+        
         agent = AIAgent(**agent_data)
         agent_dict = agent.dict()
         
@@ -6122,6 +6138,8 @@ async def create_ai_agent(agent_data: dict):
         
         return {"message": "AI agent created successfully", "agent_id": agent.id}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Create AI agent error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
