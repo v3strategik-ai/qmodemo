@@ -6515,6 +6515,9 @@ async def install_integration(integration_data: dict):
 async def get_user_integrations(user_id: str):
     """Get user's installed integrations"""
     try:
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+            
         user_integrations = await db.user_integrations.find({"user_id": user_id}).to_list(length=None)
         
         # Remove MongoDB ObjectIds and sensitive data
@@ -6522,10 +6525,14 @@ async def get_user_integrations(user_id: str):
             if '_id' in integration:
                 del integration['_id']
             if 'credentials' in integration:
-                integration['credentials'] = {"configured": bool(integration['credentials'])}
+                # Safely handle credentials field
+                creds = integration.get('credentials', {})
+                integration['credentials'] = {"configured": bool(creds) if isinstance(creds, dict) else False}
         
         return {"integrations": user_integrations}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Get user integrations error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
