@@ -7492,6 +7492,18 @@ security_manager = SecurityManager()
 async def log_security_event(event_data: dict):
     """Log security audit event"""
     try:
+        # Validate required fields
+        if 'event_type' not in event_data:
+            raise HTTPException(status_code=400, detail="Missing required field: event_type")
+        
+        # Set defaults for optional fields
+        event_data.setdefault('user_id', None)
+        event_data.setdefault('ip_address', None)
+        event_data.setdefault('user_agent', None)
+        event_data.setdefault('resource', None)
+        event_data.setdefault('success', True)
+        event_data.setdefault('details', {})
+        
         event = SecurityEvent(**event_data)
         event_dict = event.dict()
         
@@ -7499,6 +7511,8 @@ async def log_security_event(event_data: dict):
         
         return {"message": "Security event logged successfully"}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Log security event error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
