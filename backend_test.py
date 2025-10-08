@@ -1,24 +1,26 @@
-import requests
-import sys
-import json
-import websocket
-import threading
-import time
-import base64
-import io
-from datetime import datetime
+#!/usr/bin/env python3
+"""
+Enterprise Authentication & Security Features Test Suite
+Testing SAML SSO, MFA, RBAC, and GDPR Compliance endpoints
+"""
 
-class ModQAPITester:
-    def __init__(self, base_url="https://modq-saml.preview.emergentagent.com/api"):
-        self.base_url = base_url
-        self.ws_base_url = base_url.replace("https://", "wss://").replace("/api", "")
-        self.tests_run = 0
-        self.tests_passed = 0
-        self.test_user_id = None
-        self.test_user_data = None
-        self.test_session_id = None
-        self.websocket_messages = []
-        self.websocket_connected = False
+import requests
+import json
+import time
+import uuid
+from datetime import datetime
+import pyotp
+import base64
+
+# Backend URL from frontend environment
+BACKEND_URL = "https://modq-saml.preview.emergentagent.com/api"
+
+class EnterpriseSecurityTester:
+    def __init__(self):
+        self.session = requests.Session()
+        self.test_results = []
+        self.test_user_id = str(uuid.uuid4())
+        self.test_email = f"enterprise.test.{int(time.time())}@modq.com"
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
