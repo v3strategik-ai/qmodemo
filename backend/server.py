@@ -6736,6 +6736,21 @@ async def generate_analytics_report(report_id: str):
 async def create_predictive_model(model_data: dict):
     """Create predictive analytics model"""
     try:
+        # Validate required fields
+        required_fields = ['name', 'user_id', 'model_type', 'target_metric']
+        for field in required_fields:
+            if field not in model_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        # Set defaults for optional fields
+        model_data.setdefault('description', '')
+        model_data.setdefault('features', [])
+        model_data.setdefault('training_data_source', 'user_activity')
+        model_data.setdefault('model_params', {})
+        model_data.setdefault('accuracy_score', None)
+        model_data.setdefault('status', 'training')
+        model_data.setdefault('predictions', [])
+        
         model = PredictiveModel(**model_data)
         model_dict = model.dict()
         
@@ -6762,6 +6777,8 @@ async def create_predictive_model(model_data: dict):
             "accuracy": accuracy
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Create predictive model error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
