@@ -963,16 +963,6 @@ class PredictiveModelCreate(BaseModel):
     target: Optional[str] = None
     user_id: str
 
-# F1: Performance Models
-class PerformanceMetrics(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    endpoint: str
-    method: str
-    response_time_ms: float
-    status_code: int
-    user_id: Optional[str] = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
 # F3: Security Models
 class LoginRequest(BaseModel):
     email: str
