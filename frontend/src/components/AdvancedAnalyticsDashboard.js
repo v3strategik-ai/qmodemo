@@ -1,42 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Badge } from './ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Slider } from './ui/slider';
 import { 
-  BarChart3, 
-  LineChart, 
-  PieChart, 
-  TrendingUp, 
-  TrendingDown, 
-  Target, 
-  Brain, 
-  FileSpreadsheet, 
-  Calendar, 
-  Plus, 
-  Settings, 
-  Play, 
-  Pause, 
-  Download, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  AlertTriangle, 
-  CheckCircle, 
-  Activity,
-  Zap,
-  Filter,
-  Share2,
-  Star,
-  Clock
+  BarChart3, TrendingUp, Brain, Target, Zap, Eye, 
+  Download, RefreshCw, Calendar, Filter, Plus,
+  LineChart, PieChart, Activity, Lightbulb
 } from 'lucide-react';
-import { toast } from 'sonner';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const AdvancedAnalyticsDashboard = ({ currentUser }) => {
   const [dashboards, setDashboards] = useState([]);
