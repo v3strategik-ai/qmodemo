@@ -4748,23 +4748,6 @@ async def logout(current_user: dict = Depends(get_current_user)):
         logging.error(f"Logout error: {str(e)}")
         raise HTTPException(status_code=500, detail="Logout failed")
 
-@api_router.get("/auth/me")
-async def get_current_user_info(current_user: dict = Depends(get_current_user)):
-    """Get current user information"""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    # Remove sensitive information
-    user_info = {
-        "id": current_user["id"],
-        "username": current_user["username"],
-        "email": current_user["email"],
-        "role": current_user["role"],
-        "created_at": current_user["created_at"]
-    }
-    
-    return user_info
-
 async def log_security_event(action: str, user_id: Optional[str] = None, resource: Optional[str] = None, 
                            ip_address: Optional[str] = None, success: bool = True, details: Dict[str, Any] = {}):
     """Log security audit event"""
