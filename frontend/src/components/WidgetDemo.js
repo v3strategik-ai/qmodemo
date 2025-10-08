@@ -1114,6 +1114,11 @@ const WidgetDemo = () => {
               </div>
             </TabsContent>
 
+            {/* Enhanced Analytics Tab */}
+            <TabsContent value="enhanced-analytics" className="mt-6">
+              <EnhancedAnalyticsDashboard currentUser={currentUser} />
+            </TabsContent>
+
             {/* Integration Marketplace Advanced Tab */}
             <TabsContent value="integrations" className="mt-6">
               {/* <IntegrationMarketplaceAdvanced currentUser={currentUser} /> */}
