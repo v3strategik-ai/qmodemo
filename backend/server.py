@@ -6867,6 +6867,238 @@ async def get_ai_powered_insights(user_id: str):
         logging.error(f"Get AI insights error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# =============================================
+# F1: PERFORMANCE OPTIMIZATION  
+# =============================================
+
+import time
+from functools import wraps
+import psutil
+import asyncio
+from typing import Dict, Any
+import cachetools
+
+# Performance monitoring middleware
+class PerformanceMonitor:
+    def __init__(self):
+        self.metrics_cache = cachetools.TTLCache(maxsize=1000, ttl=300)  # 5 minute cache
+        
+    async def track_performance(self, endpoint: str, method: str, start_time: float, status_code: int, user_id: str = None):
+        """Track API performance metrics"""
+        response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        metrics = PerformanceMetrics(
+            endpoint=endpoint,
+            method=method,
+            response_time_ms=response_time,
+            status_code=status_code,
+            user_id=user_id,
+            memory_usage_mb=psutil.virtual_memory().used / 1024 / 1024,
+            cpu_usage_percent=psutil.cpu_percent()
+        )
+        
+        try:
+            await db.performance_metrics.insert_one(metrics.dict())
+        except Exception as e:
+            logging.error(f"Failed to store performance metrics: {e}")
+
+performance_monitor = PerformanceMonitor()
+
+def performance_tracker(func):
+    """Decorator to track API endpoint performance"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        start_time = time.time()
+        endpoint = getattr(func, '__name__', 'unknown')
+        
+        try:
+            result = await func(*args, **kwargs)
+            await performance_monitor.track_performance(endpoint, 'API', start_time, 200)
+            return result
+        except HTTPException as e:
+            await performance_monitor.track_performance(endpoint, 'API', start_time, e.status_code)
+            raise
+        except Exception as e:
+            await performance_monitor.track_performance(endpoint, 'API', start_time, 500)
+            raise
+    
+    return wrapper
+
+# Caching utilities
+class CacheManager:
+    def __init__(self):
+        self.cache = cachetools.TTLCache(maxsize=1000, ttl=300)
+        
+    def get(self, key: str):
+        return self.cache.get(key)
+    
+    def set(self, key: str, value: Any, ttl: int = 300):
+        cache_with_ttl = cachetools.TTLCache(maxsize=1000, ttl=ttl)
+        cache_with_ttl[key] = value
+        self.cache.update(cache_with_ttl)
+    
+    def invalidate(self, pattern: str = None):
+        if pattern:
+            keys_to_remove = [k for k in self.cache.keys() if pattern in str(k)]
+            for key in keys_to_remove:
+                del self.cache[key]
+        else:
+            self.cache.clear()
+
+cache_manager = CacheManager()
+
+# F1: Performance Optimization Endpoints
+@app.get("/api/performance/metrics")
+@performance_tracker
+async def get_performance_metrics():
+    """Get system performance metrics"""
+    try:
+        # Check cache first
+        cached_metrics = cache_manager.get("system_metrics")
+        if cached_metrics:
+            return cached_metrics
+        
+        # Get recent performance data
+        recent_metrics = await db.performance_metrics.find().sort("timestamp", -1).limit(100).to_list(length=None)
+        
+        if recent_metrics:
+            # Calculate averages
+            avg_response_time = sum(m.get("response_time_ms", 0) for m in recent_metrics) / len(recent_metrics)
+            avg_memory_usage = sum(m.get("memory_usage_mb", 0) for m in recent_metrics) / len(recent_metrics)
+            avg_cpu_usage = sum(m.get("cpu_usage_percent", 0) for m in recent_metrics) / len(recent_metrics)
+            
+            # Error rate
+            error_count = len([m for m in recent_metrics if m.get("status_code", 200) >= 400])
+            error_rate = (error_count / len(recent_metrics)) * 100
+            
+            metrics_summary = {
+                "average_response_time_ms": round(avg_response_time, 2),
+                "average_memory_usage_mb": round(avg_memory_usage, 2),
+                "average_cpu_usage_percent": round(avg_cpu_usage, 2),
+                "error_rate_percent": round(error_rate, 2),
+                "total_requests": len(recent_metrics),
+                "healthy": error_rate < 5 and avg_response_time < 1000
+            }
+        else:
+            # Current system stats if no historical data
+            metrics_summary = {
+                "current_memory_usage_mb": round(psutil.virtual_memory().used / 1024 / 1024, 2),
+                "current_cpu_usage_percent": psutil.cpu_percent(),
+                "disk_usage_percent": psutil.disk_usage('/').percent,
+                "healthy": True
+            }
+        
+        # Cache for 1 minute
+        cache_manager.set("system_metrics", metrics_summary, ttl=60)
+        
+        return metrics_summary
+        
+    except Exception as e:
+        logging.error(f"Get performance metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/performance/optimize")
+@performance_tracker  
+async def optimize_system_performance():
+    """Run system optimization tasks"""
+    try:
+        optimization_results = []
+        
+        # Clear old performance metrics (keep last 1000)
+        old_metrics_count = await db.performance_metrics.count_documents({})
+        if old_metrics_count > 1000:
+            # Delete oldest metrics
+            old_metrics = await db.performance_metrics.find().sort("timestamp", 1).limit(old_metrics_count - 1000).to_list(length=None)
+            old_ids = [m["_id"] for m in old_metrics]
+            delete_result = await db.performance_metrics.delete_many({"_id": {"$in": old_ids}})
+            optimization_results.append(f"Cleaned {delete_result.deleted_count} old performance metrics")
+        
+        # Clear cache
+        cache_manager.invalidate()
+        optimization_results.append("System cache cleared")
+        
+        # Optimize database indexes
+        try:
+            await db.performance_metrics.create_index([("timestamp", -1)])
+            await db.chat_messages.create_index([("user_id", 1), ("created_at", -1)])
+            optimization_results.append("Database indexes optimized")
+        except Exception as e:
+            optimization_results.append(f"Index optimization warning: {str(e)}")
+        
+        return {
+            "message": "System optimization completed",
+            "optimizations": optimization_results,
+            "completed_at": datetime.now(timezone.utc)
+        }
+        
+    except Exception as e:
+        logging.error(f"Optimize system error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/performance/health-check")
+async def health_check():
+    """Comprehensive system health check"""
+    try:
+        health_status = {
+            "timestamp": datetime.now(timezone.utc),
+            "status": "healthy",
+            "checks": {}
+        }
+        
+        # Database connectivity
+        try:
+            await db.users.count_documents({})
+            health_status["checks"]["database"] = {"status": "healthy", "message": "Connected"}
+        except Exception as e:
+            health_status["checks"]["database"] = {"status": "unhealthy", "message": str(e)}
+            health_status["status"] = "degraded"
+        
+        # Memory usage check
+        memory_percent = psutil.virtual_memory().percent
+        if memory_percent > 90:
+            health_status["checks"]["memory"] = {"status": "critical", "usage_percent": memory_percent}
+            health_status["status"] = "critical"
+        elif memory_percent > 75:
+            health_status["checks"]["memory"] = {"status": "warning", "usage_percent": memory_percent}
+            if health_status["status"] == "healthy":
+                health_status["status"] = "degraded"
+        else:
+            health_status["checks"]["memory"] = {"status": "healthy", "usage_percent": memory_percent}
+        
+        # CPU usage check
+        cpu_percent = psutil.cpu_percent(interval=1)
+        if cpu_percent > 90:
+            health_status["checks"]["cpu"] = {"status": "critical", "usage_percent": cpu_percent}
+            health_status["status"] = "critical"
+        elif cpu_percent > 75:
+            health_status["checks"]["cpu"] = {"status": "warning", "usage_percent": cpu_percent}
+            if health_status["status"] == "healthy":
+                health_status["status"] = "degraded"
+        else:
+            health_status["checks"]["cpu"] = {"status": "healthy", "usage_percent": cpu_percent}
+        
+        # Disk usage check
+        disk_percent = psutil.disk_usage('/').percent
+        if disk_percent > 90:
+            health_status["checks"]["disk"] = {"status": "critical", "usage_percent": disk_percent}
+            health_status["status"] = "critical"
+        elif disk_percent > 80:
+            health_status["checks"]["disk"] = {"status": "warning", "usage_percent": disk_percent}
+            if health_status["status"] == "healthy":
+                health_status["status"] = "degraded"
+        else:
+            health_status["checks"]["disk"] = {"status": "healthy", "usage_percent": disk_percent}
+        
+        return health_status
+        
+    except Exception as e:
+        logging.error(f"Health check error: {e}")
+        return {
+            "timestamp": datetime.now(timezone.utc),
+            "status": "unhealthy",
+            "error": str(e)
+        }
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
