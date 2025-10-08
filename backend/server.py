@@ -6289,6 +6289,276 @@ async def create_agent_from_template(template_data: dict):
         logging.error(f"Create agent from template error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# =============================================
+# E3: CUSTOM INTEGRATION MARKETPLACE
+# =============================================
+
+class Integration(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    category: str
+    provider: str
+    icon_url: Optional[str] = None
+    setup_required: bool = True
+    auth_type: str = "api_key"  # api_key, oauth2, webhook
+    configuration_schema: Dict[str, Any] = {}
+    endpoints: List[Dict[str, Any]] = []
+    is_active: bool = True
+    popularity_score: int = 0
+    tags: List[str] = []
+
+class UserIntegration(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    integration_id: str
+    configuration: Dict[str, Any] = {}
+    credentials: Dict[str, Any] = {}  # Encrypted in production
+    status: str = "inactive"  # inactive, active, error, expired
+    last_sync: Optional[datetime] = None
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    usage_stats: Dict[str, Any] = {}
+
+@app.get("/api/integrations/marketplace")
+async def get_integration_marketplace():
+    """Get available integrations in the marketplace"""
+    try:
+        integrations = [
+            Integration(
+                name="Salesforce",
+                description="Connect with Salesforce CRM for lead management and sales automation",
+                category="CRM",
+                provider="Salesforce",
+                icon_url="/icons/salesforce.svg",
+                setup_required=True,
+                auth_type="oauth2",
+                configuration_schema={
+                    "instance_url": {"type": "string", "required": True, "description": "Salesforce instance URL"},
+                    "api_version": {"type": "string", "default": "v58.0", "description": "API version"},
+                    "sync_frequency": {"type": "select", "options": ["real-time", "hourly", "daily"], "default": "hourly"}
+                },
+                endpoints=[
+                    {"name": "Get Leads", "method": "GET", "path": "/services/data/v58.0/sobjects/Lead"},
+                    {"name": "Create Lead", "method": "POST", "path": "/services/data/v58.0/sobjects/Lead"},
+                    {"name": "Update Opportunity", "method": "PATCH", "path": "/services/data/v58.0/sobjects/Opportunity/{id}"}
+                ],
+                popularity_score=95,
+                tags=["crm", "sales", "leads", "enterprise"]
+            ).dict(),
+            
+            Integration(
+                name="Slack",
+                description="Send notifications and updates to Slack channels",
+                category="Communication",
+                provider="Slack",
+                icon_url="/icons/slack.svg",
+                setup_required=True,
+                auth_type="oauth2",
+                configuration_schema={
+                    "workspace_url": {"type": "string", "required": True, "description": "Slack workspace URL"},
+                    "default_channel": {"type": "string", "default": "#general", "description": "Default channel for notifications"},
+                    "notification_types": {"type": "multiselect", "options": ["alerts", "reports", "workflows"], "default": ["alerts"]}
+                },
+                endpoints=[
+                    {"name": "Send Message", "method": "POST", "path": "/api/chat.postMessage"},
+                    {"name": "Get Channels", "method": "GET", "path": "/api/conversations.list"},
+                    {"name": "Upload File", "method": "POST", "path": "/api/files.upload"}
+                ],
+                popularity_score=88,
+                tags=["communication", "notifications", "collaboration"]
+            ).dict(),
+            
+            Integration(
+                name="Stripe",
+                description="Process payments and manage billing with Stripe",
+                category="Payments",
+                provider="Stripe",
+                icon_url="/icons/stripe.svg",
+                setup_required=True,
+                auth_type="api_key",
+                configuration_schema={
+                    "publishable_key": {"type": "string", "required": True, "description": "Stripe publishable key"},
+                    "webhook_endpoint": {"type": "string", "description": "Webhook endpoint URL"},
+                    "currency": {"type": "select", "options": ["USD", "EUR", "GBP"], "default": "USD"}
+                },
+                endpoints=[
+                    {"name": "Create Payment Intent", "method": "POST", "path": "/v1/payment_intents"},
+                    {"name": "Get Customer", "method": "GET", "path": "/v1/customers/{id}"},
+                    {"name": "Create Subscription", "method": "POST", "path": "/v1/subscriptions"}
+                ],
+                popularity_score=92,
+                tags=["payments", "billing", "subscription", "fintech"]
+            ).dict(),
+            
+            Integration(
+                name="Microsoft 365",
+                description="Connect with Microsoft 365 for email, calendar, and document management",
+                category="Productivity",
+                provider="Microsoft",
+                icon_url="/icons/microsoft365.svg",
+                setup_required=True,
+                auth_type="oauth2",
+                configuration_schema={
+                    "tenant_id": {"type": "string", "required": True, "description": "Microsoft 365 tenant ID"},
+                    "services": {"type": "multiselect", "options": ["Outlook", "Teams", "SharePoint", "OneDrive"], "default": ["Outlook"]},
+                    "sync_calendars": {"type": "boolean", "default": True, "description": "Sync calendar events"}
+                },
+                endpoints=[
+                    {"name": "Send Email", "method": "POST", "path": "/v1.0/me/sendMail"},
+                    {"name": "Get Calendar Events", "method": "GET", "path": "/v1.0/me/events"},
+                    {"name": "Upload File", "method": "PUT", "path": "/v1.0/me/drive/root:/{filename}:/content"}
+                ],
+                popularity_score=85,
+                tags=["productivity", "email", "calendar", "documents", "enterprise"]
+            ).dict(),
+            
+            Integration(
+                name="Google Workspace",
+                description="Integrate with Google Workspace (Gmail, Drive, Calendar)",
+                category="Productivity",
+                provider="Google",
+                icon_url="/icons/google-workspace.svg",
+                setup_required=True,
+                auth_type="oauth2",
+                configuration_schema={
+                    "project_id": {"type": "string", "required": True, "description": "Google Cloud project ID"},
+                    "services": {"type": "multiselect", "options": ["Gmail", "Drive", "Calendar", "Sheets"], "default": ["Gmail"]},
+                    "folder_mapping": {"type": "object", "description": "Folder mapping for file organization"}
+                },
+                endpoints=[
+                    {"name": "Send Email", "method": "POST", "path": "/gmail/v1/users/me/messages/send"},
+                    {"name": "List Files", "method": "GET", "path": "/drive/v3/files"},
+                    {"name": "Create Event", "method": "POST", "path": "/calendar/v3/calendars/primary/events"}
+                ],
+                popularity_score=90,
+                tags=["productivity", "email", "storage", "calendar", "google"]
+            ).dict(),
+            
+            Integration(
+                name="HubSpot",
+                description="Connect with HubSpot CRM for marketing and sales automation",
+                category="CRM",
+                provider="HubSpot",
+                icon_url="/icons/hubspot.svg",
+                setup_required=True,
+                auth_type="api_key",
+                configuration_schema={
+                    "portal_id": {"type": "string", "required": True, "description": "HubSpot portal ID"},
+                    "sync_contacts": {"type": "boolean", "default": True, "description": "Sync contact records"},
+                    "lead_scoring": {"type": "boolean", "default": False, "description": "Enable lead scoring"}
+                },
+                endpoints=[
+                    {"name": "Get Contacts", "method": "GET", "path": "/crm/v3/objects/contacts"},
+                    {"name": "Create Deal", "method": "POST", "path": "/crm/v3/objects/deals"},
+                    {"name": "Update Contact", "method": "PATCH", "path": "/crm/v3/objects/contacts/{contactId}"}
+                ],
+                popularity_score=82,
+                tags=["crm", "marketing", "automation", "leads"]
+            ).dict()
+        ]
+        
+        return {"integrations": integrations}
+        
+    except Exception as e:
+        logging.error(f"Get integration marketplace error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/integrations/install")
+async def install_integration(integration_data: dict):
+    """Install integration for user (setup placeholder)"""
+    try:
+        user_id = integration_data.get('user_id')
+        integration_id = integration_data.get('integration_id')
+        
+        if not user_id or not integration_id:
+            raise HTTPException(status_code=400, detail="user_id and integration_id required")
+        
+        # Create user integration record (placeholder - real implementation would handle OAuth)
+        user_integration = UserIntegration(
+            user_id=user_id,
+            integration_id=integration_id,
+            status="inactive"  # Requires configuration
+        )
+        
+        await db.user_integrations.insert_one(user_integration.dict())
+        
+        return {
+            "message": "Integration installed successfully. Configuration required.",
+            "integration_id": user_integration.id,
+            "status": "pending_configuration"
+        }
+        
+    except Exception as e:
+        logging.error(f"Install integration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/integrations/user/{user_id}")
+async def get_user_integrations(user_id: str):
+    """Get user's installed integrations"""
+    try:
+        user_integrations = await db.user_integrations.find({"user_id": user_id}).to_list(length=None)
+        
+        # Remove MongoDB ObjectIds and sensitive data
+        for integration in user_integrations:
+            if '_id' in integration:
+                del integration['_id']
+            if 'credentials' in integration:
+                integration['credentials'] = {"configured": bool(integration['credentials'])}
+        
+        return {"integrations": user_integrations}
+        
+    except Exception as e:
+        logging.error(f"Get user integrations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/integrations/{integration_id}/configure")
+async def configure_integration(integration_id: str, config_data: dict):
+    """Configure installed integration (placeholder)"""
+    try:
+        user_id = config_data.get('user_id')
+        configuration = config_data.get('configuration', {})
+        
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id required")
+        
+        # Update integration configuration (placeholder)
+        await db.user_integrations.update_one(
+            {"id": integration_id, "user_id": user_id},
+            {
+                "$set": {
+                    "configuration": configuration,
+                    "status": "active",  # In real implementation, would test connection first
+                    "last_sync": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        return {"message": "Integration configured successfully", "status": "active"}
+        
+    except Exception as e:
+        logging.error(f"Configure integration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/integrations/{integration_id}/webhook")
+async def handle_integration_webhook(integration_id: str, webhook_data: dict):
+    """Handle webhook from integration (placeholder)"""
+    try:
+        # Log webhook for debugging
+        webhook_log = {
+            "integration_id": integration_id,
+            "data": webhook_data,
+            "received_at": datetime.now(timezone.utc)
+        }
+        
+        await db.webhook_logs.insert_one(webhook_log)
+        
+        return {"message": "Webhook received successfully"}
+        
+    except Exception as e:
+        logging.error(f"Handle webhook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
