@@ -2793,18 +2793,6 @@ class AdvancedWorkflowNode(BaseModel):
     ai_config: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class WorkflowExecution(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    workflow_id: str
-    user_id: str
-    status: str = "running"  # running, completed, failed, paused
-    current_node: Optional[str] = None
-    execution_data: Dict[str, Any] = {}
-    error_details: Optional[Dict[str, Any]] = None
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    metrics: Dict[str, Any] = {}
-
 class WorkflowSuggestion(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     workflow_id: str
