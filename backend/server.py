@@ -3495,25 +3495,6 @@ async def execute_enhanced_workflow(execution_data: dict):
         logging.error(f"Execute workflow error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.get("/workflows/{workflow_id}/executions")
-async def get_workflow_executions(workflow_id: str):
-    """Get execution history for workflow"""
-    try:
-        executions = await db.workflow_executions.find(
-            {"workflow_id": workflow_id}
-        ).sort("started_at", -1).to_list(length=50)
-        
-        # Remove MongoDB ObjectIds
-        for execution in executions:
-            if '_id' in execution:
-                del execution['_id']
-        
-        return {"executions": executions}
-        
-    except Exception as e:
-        logging.error(f"Get workflow executions error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @api_router.post("/workflows/{workflow_id}/suggestions")
 async def generate_workflow_suggestions(workflow_id: str):
     """Generate AI-powered workflow optimization suggestions"""
@@ -3586,49 +3567,6 @@ async def generate_workflow_suggestions(workflow_id: str):
         
     except Exception as e:
         logging.error(f"Generate workflow suggestions error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.get("/workflows/{workflow_id}/metrics")
-async def get_workflow_metrics(workflow_id: str):
-    """Get detailed workflow performance metrics"""
-    try:
-        # Get executions for metrics calculation
-        executions = await db.workflow_executions.find(
-            {"workflow_id": workflow_id}
-        ).to_list(length=None)
-        
-        if not executions:
-            return {"metrics": WorkflowMetrics(workflow_id=workflow_id).dict()}
-        
-        # Calculate metrics
-        total_executions = len(executions)
-        successful_executions = len([e for e in executions if e.get("status") == "completed"])
-        failed_executions = len([e for e in executions if e.get("status") == "failed"])
-        
-        execution_times = [e.get("metrics", {}).get("execution_time_ms", 0) for e in executions if e.get("metrics")]
-        avg_execution_time = sum(execution_times) / len(execution_times) if execution_times else 0
-        
-        last_execution = max(executions, key=lambda x: x.get("started_at", datetime.min)).get("started_at") if executions else None
-        
-        error_rate = (failed_executions / total_executions) * 100 if total_executions > 0 else 0
-        performance_score = max(0, 100 - error_rate - (avg_execution_time / 1000))  # Simple scoring
-        
-        metrics = WorkflowMetrics(
-            workflow_id=workflow_id,
-            total_executions=total_executions,
-            successful_executions=successful_executions,
-            failed_executions=failed_executions,
-            average_execution_time=avg_execution_time,
-            last_execution=last_execution,
-            performance_score=performance_score,
-            error_rate=error_rate,
-            usage_frequency=total_executions
-        )
-        
-        return {"metrics": metrics.dict()}
-        
-    except Exception as e:
-        logging.error(f"Get workflow metrics error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 async def execute_workflow_node(node: Dict[str, Any], input_data: Dict[str, Any]) -> Dict[str, Any]:
