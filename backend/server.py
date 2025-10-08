@@ -5966,6 +5966,329 @@ async def get_user_activity_analytics(user_id: str, days: int = 7):
         logging.error(f"Get user activity error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# =============================================
+# E2: ADVANCED AI INTEGRATIONS
+# =============================================
+
+from dotenv import load_dotenv
+load_dotenv()
+
+# Multi-LLM Chat Service using emergentintegrations
+class MultiLLMChatService:
+    def __init__(self):
+        self.emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+        self.available_models = {
+            "openai": ["gpt-5", "gpt-4o", "gpt-4o-mini", "gpt-4", "o1", "o1-mini"],
+            "anthropic": ["claude-3-5-sonnet-20241022", "claude-3-7-sonnet-20250219", "claude-4-sonnet-20250514"],
+            "gemini": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-1.5-pro"]
+        }
+        
+    async def get_ai_response(self, message: str, provider: str = "openai", model: str = "gpt-4o-mini", 
+                             system_message: str = None, session_id: str = None):
+        """Get AI response using specified provider and model"""
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+            
+            # Default system message
+            if not system_message:
+                system_message = "You are a helpful AI assistant for modQ business intelligence platform."
+            
+            # Initialize chat
+            chat = LlmChat(
+                api_key=self.emergent_key,
+                session_id=session_id or str(uuid.uuid4()),
+                system_message=system_message
+            ).with_model(provider, model)
+            
+            # Create user message
+            user_message = UserMessage(text=message)
+            
+            # Get response
+            response = await chat.send_message(user_message)
+            
+            return {
+                "response": response,
+                "provider": provider,
+                "model": model,
+                "success": True
+            }
+            
+        except Exception as e:
+            logging.error(f"Multi-LLM chat error: {e}")
+            return {
+                "response": f"Error: {str(e)}",
+                "provider": provider,
+                "model": model,
+                "success": False
+            }
+
+# AI Agent Models
+class AIAgent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    user_id: str
+    system_prompt: str
+    provider: str = "openai"  # openai, anthropic, gemini
+    model: str = "gpt-4o-mini"
+    temperature: float = 0.7
+    max_tokens: int = 1000
+    personality: Dict[str, Any] = {}
+    capabilities: List[str] = []
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    usage_stats: Dict[str, Any] = {}
+
+class AIAgentTemplate(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    category: str
+    system_prompt: str
+    recommended_provider: str
+    recommended_model: str
+    default_settings: Dict[str, Any] = {}
+    tags: List[str] = []
+
+# Initialize Multi-LLM service
+multi_llm_service = MultiLLMChatService()
+
+# E2: AI Agent Management Endpoints
+@app.get("/api/ai/models/available")
+async def get_available_ai_models():
+    """Get available AI models from all providers"""
+    try:
+        return {
+            "models": multi_llm_service.available_models,
+            "default_provider": "openai",
+            "default_model": "gpt-4o-mini"
+        }
+    except Exception as e:
+        logging.error(f"Get available models error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/chat/multi-llm")
+async def multi_llm_chat(chat_data: dict):
+    """Multi-LLM chat endpoint with provider/model selection"""
+    try:
+        message = chat_data.get('message')
+        user_id = chat_data.get('user_id')
+        provider = chat_data.get('provider', 'openai')
+        model = chat_data.get('model', 'gpt-4o-mini')
+        system_message = chat_data.get('system_message')
+        session_id = chat_data.get('session_id')
+        
+        if not message or not user_id:
+            raise HTTPException(status_code=400, detail="message and user_id required")
+        
+        # Get AI response
+        result = await multi_llm_service.get_ai_response(
+            message=message,
+            provider=provider,
+            model=model,
+            system_message=system_message,
+            session_id=session_id
+        )
+        
+        # Store conversation in database
+        conversation = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "session_id": session_id,
+            "provider": provider,
+            "model": model,
+            "user_message": message,
+            "ai_response": result["response"],
+            "success": result["success"],
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.ai_conversations.insert_one(conversation)
+        
+        return result
+        
+    except Exception as e:
+        logging.error(f"Multi-LLM chat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/agents/create")
+async def create_ai_agent(agent_data: dict):
+    """Create custom AI agent with specific capabilities"""
+    try:
+        agent = AIAgent(**agent_data)
+        agent_dict = agent.dict()
+        
+        await db.ai_agents.insert_one(agent_dict)
+        
+        return {"message": "AI agent created successfully", "agent_id": agent.id}
+        
+    except Exception as e:
+        logging.error(f"Create AI agent error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ai/agents/{user_id}")
+async def get_user_ai_agents(user_id: str):
+    """Get AI agents for user"""
+    try:
+        agents = await db.ai_agents.find({"user_id": user_id}).to_list(length=None)
+        
+        # Remove MongoDB ObjectIds
+        for agent in agents:
+            if '_id' in agent:
+                del agent['_id']
+        
+        return {"agents": agents}
+        
+    except Exception as e:
+        logging.error(f"Get user AI agents error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/agents/{agent_id}/chat")
+async def chat_with_ai_agent(agent_id: str, chat_data: dict):
+    """Chat with specific AI agent"""
+    try:
+        message = chat_data.get('message')
+        user_id = chat_data.get('user_id')
+        
+        if not message or not user_id:
+            raise HTTPException(status_code=400, detail="message and user_id required")
+        
+        # Get AI agent
+        agent = await db.ai_agents.find_one({"id": agent_id, "user_id": user_id})
+        if not agent:
+            raise HTTPException(status_code=404, detail="AI agent not found")
+        
+        # Chat with agent using its configuration
+        result = await multi_llm_service.get_ai_response(
+            message=message,
+            provider=agent["provider"],
+            model=agent["model"],
+            system_message=agent["system_prompt"],
+            session_id=f"agent_{agent_id}_{user_id}"
+        )
+        
+        # Update agent usage stats
+        usage_stats = agent.get("usage_stats", {})
+        usage_stats["total_conversations"] = usage_stats.get("total_conversations", 0) + 1
+        usage_stats["last_used"] = datetime.now(timezone.utc)
+        
+        await db.ai_agents.update_one(
+            {"id": agent_id},
+            {"$set": {"usage_stats": usage_stats}}
+        )
+        
+        return {
+            **result,
+            "agent_name": agent["name"],
+            "agent_id": agent_id
+        }
+        
+    except Exception as e:
+        logging.error(f"Chat with AI agent error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ai/agents/templates")
+async def get_ai_agent_templates():
+    """Get pre-built AI agent templates"""
+    try:
+        templates = [
+            AIAgentTemplate(
+                name="Business Analyst",
+                description="Expert at analyzing business data and generating insights",
+                category="analytics",
+                system_prompt="You are a business analyst expert. Analyze data, identify trends, and provide actionable business insights. Focus on KPIs, ROI, and strategic recommendations.",
+                recommended_provider="openai",
+                recommended_model="gpt-4o",
+                default_settings={"temperature": 0.3, "max_tokens": 1500},
+                tags=["analytics", "business", "insights"]
+            ).dict(),
+            AIAgentTemplate(
+                name="Sales Assistant",
+                description="Helps with lead qualification, sales strategies, and customer engagement",
+                category="sales",
+                system_prompt="You are a sales expert assistant. Help with lead qualification, sales strategies, objection handling, and closing techniques. Be persuasive but ethical.",
+                recommended_provider="anthropic",
+                recommended_model="claude-3-5-sonnet-20241022",
+                default_settings={"temperature": 0.6, "max_tokens": 1200},
+                tags=["sales", "crm", "leads"]
+            ).dict(),
+            AIAgentTemplate(
+                name="Customer Support",
+                description="Provides helpful customer support and issue resolution",
+                category="support",
+                system_prompt="You are a customer support specialist. Be helpful, empathetic, and solution-focused. Guide customers through problems and provide clear steps for resolution.",
+                recommended_provider="openai",
+                recommended_model="gpt-4o-mini",
+                default_settings={"temperature": 0.4, "max_tokens": 1000},
+                tags=["support", "customer", "help"]
+            ).dict(),
+            AIAgentTemplate(
+                name="Technical Advisor",
+                description="Provides technical guidance and troubleshooting",
+                category="technical",
+                system_prompt="You are a technical expert. Provide clear technical guidance, troubleshoot issues, and explain complex concepts in simple terms. Focus on practical solutions.",
+                recommended_provider="gemini",
+                recommended_model="gemini-2.0-flash",
+                default_settings={"temperature": 0.2, "max_tokens": 1800},
+                tags=["technical", "troubleshooting", "guidance"]
+            ).dict(),
+            AIAgentTemplate(
+                name="Creative Writer",
+                description="Generates creative content, marketing copy, and engaging text",
+                category="creative",
+                system_prompt="You are a creative writing expert. Generate engaging content, marketing copy, and creative text. Be imaginative, compelling, and audience-focused.",
+                recommended_provider="anthropic",
+                recommended_model="claude-3-7-sonnet-20250219",
+                default_settings={"temperature": 0.8, "max_tokens": 2000},
+                tags=["creative", "writing", "marketing"]
+            ).dict()
+        ]
+        
+        return {"templates": templates}
+        
+    except Exception as e:
+        logging.error(f"Get AI agent templates error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/agents/from-template")
+async def create_agent_from_template(template_data: dict):
+    """Create AI agent from template"""
+    try:
+        user_id = template_data.get('user_id')
+        template_name = template_data.get('template_name')
+        agent_name = template_data.get('agent_name', template_name)
+        
+        if not user_id or not template_name:
+            raise HTTPException(status_code=400, detail="user_id and template_name required")
+        
+        # Get template
+        templates = await get_ai_agent_templates()
+        template = next((t for t in templates["templates"] if t["name"] == template_name), None)
+        
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Create agent from template
+        agent = AIAgent(
+            name=agent_name,
+            description=template["description"],
+            user_id=user_id,
+            system_prompt=template["system_prompt"],
+            provider=template["recommended_provider"],
+            model=template["recommended_model"],
+            temperature=template["default_settings"].get("temperature", 0.7),
+            max_tokens=template["default_settings"].get("max_tokens", 1000),
+            capabilities=template["tags"]
+        )
+        
+        await db.ai_agents.insert_one(agent.dict())
+        
+        return {"message": "AI agent created from template", "agent_id": agent.id}
+        
+    except Exception as e:
+        logging.error(f"Create agent from template error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def create_default_tours():
     """Create default guided tours for new users"""
     try:
