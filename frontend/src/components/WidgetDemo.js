@@ -765,8 +765,9 @@ const WidgetDemo = () => {
                 <Badge variant="outline" className="text-xs ml-1">New</Badge>
               </TabsTrigger>
               <TabsTrigger value="ai-agents" className="flex items-center gap-2">
-                <Bot className="w-4 h-4" />
+                <Brain className="w-4 h-4" />
                 AI Agents
+                <Badge variant="outline" className="text-xs ml-1">E2</Badge>
               </TabsTrigger>
               <TabsTrigger value="integrations" className="flex items-center gap-2">
                 <Layers className="w-4 h-4" />
