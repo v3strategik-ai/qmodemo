@@ -2784,6 +2784,59 @@ async def get_user_white_label_config(user_id: str):
         raise HTTPException(status_code=500, detail="Failed to retrieve white-label configuration")
 
 # Workflow Builder routes
+# =============================================
+# E1: ENHANCED WORKFLOW AUTOMATION
+# =============================================
+
+# Enhanced Workflow Models
+class AdvancedWorkflowNode(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str
+    subtype: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    position: Dict[str, float] = {"x": 0, "y": 0}
+    properties: Dict[str, Any] = {}
+    inputs: List[str] = []
+    outputs: List[str] = []
+    conditions: Optional[Dict[str, Any]] = None
+    ai_config: Optional[Dict[str, Any]] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WorkflowExecution(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workflow_id: str
+    user_id: str
+    status: str = "running"  # running, completed, failed, paused
+    current_node: Optional[str] = None
+    execution_data: Dict[str, Any] = {}
+    error_details: Optional[Dict[str, Any]] = None
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[datetime] = None
+    metrics: Dict[str, Any] = {}
+
+class WorkflowSuggestion(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workflow_id: str
+    suggestion_type: str  # optimization, error_fix, enhancement
+    title: str
+    description: str
+    confidence_score: float
+    suggested_changes: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    applied: bool = False
+
+class WorkflowMetrics(BaseModel):
+    workflow_id: str
+    total_executions: int = 0
+    successful_executions: int = 0
+    failed_executions: int = 0
+    average_execution_time: float = 0.0
+    last_execution: Optional[datetime] = None
+    performance_score: float = 0.0
+    error_rate: float = 0.0
+    usage_frequency: int = 0
+
 # E1: Enhanced Workflow Automation - Advanced Node Types
 def get_enhanced_node_types():
     """Get enhanced workflow node types with advanced capabilities"""
