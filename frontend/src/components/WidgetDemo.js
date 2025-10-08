@@ -1108,10 +1108,7 @@ const WidgetDemo = () => {
 
             {/* AI Agent Manager Tab */}
             <TabsContent value="ai-agents" className="mt-6">
-              {/* <AIAgentManager currentUser={currentUser} /> */}
-              <div className="p-6 text-center text-gray-400">
-                AI Agent Manager temporarily disabled for debugging
-              </div>
+              <AdvancedAIManager currentUser={currentUser} />
             </TabsContent>
 
             {/* Enhanced Analytics Tab */}
