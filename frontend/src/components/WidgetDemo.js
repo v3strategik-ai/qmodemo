@@ -762,7 +762,7 @@ const WidgetDemo = () => {
                 Workflows
               </TabsTrigger>
               <TabsTrigger value="enterprise-auth" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
+                <Shield className="w-4 h-4" />
                 Enterprise
                 <Badge variant="outline" className="text-xs ml-1">Security</Badge>
               </TabsTrigger>
