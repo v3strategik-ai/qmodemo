@@ -744,7 +744,7 @@ const WidgetDemo = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-15 glass neon-border" style={{gridTemplateColumns: 'repeat(15, minmax(0, 1fr))'}}>
+            <TabsList className="grid w-full grid-cols-16 glass neon-border" style={{gridTemplateColumns: 'repeat(16, minmax(0, 1fr))'}}>
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 AI Chat
@@ -760,6 +760,11 @@ const WidgetDemo = () => {
               <TabsTrigger value="workflows" className="flex items-center gap-2">
                 <Workflow className="w-4 h-4" />
                 Workflows
+              </TabsTrigger>
+              <TabsTrigger value="enterprise-auth" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Enterprise
+                <Badge variant="outline" className="text-xs ml-1">Security</Badge>
               </TabsTrigger>
 
               <TabsTrigger value="beta-testing" className="flex items-center gap-2">
