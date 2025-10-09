@@ -809,7 +809,6 @@ const WidgetDemo = () => {
                 Knowledge
               </TabsTrigger>
             </TabsList>
-            </TabsList>
 
                 {/* Chat Tab */}
             <TabsContent value="chat" className="mt-6">
