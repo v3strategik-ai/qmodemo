@@ -744,74 +744,81 @@ const WidgetDemo = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-16 glass neon-border" style={{gridTemplateColumns: 'repeat(16, minmax(0, 1fr))'}}>
-              <TabsTrigger value="chat" className="flex items-center gap-2">
+            {/* Primary Navigation Row - Core Features */}
+            <TabsList className="grid w-full grid-cols-8 glass neon-border mb-2" style={{gridTemplateColumns: 'repeat(8, minmax(0, 1fr))'}}>
+              <TabsTrigger value="chat" className="flex items-center gap-1 text-sm">
                 <MessageSquare className="w-4 h-4" />
                 AI Chat
               </TabsTrigger>
-              <TabsTrigger value="voice" className="flex items-center gap-2">
+              <TabsTrigger value="voice" className="flex items-center gap-1 text-sm">
                 <Mic className="w-4 h-4" />
                 Voice
               </TabsTrigger>
-              <TabsTrigger value="teams" className="flex items-center gap-2">
+              <TabsTrigger value="teams" className="flex items-center gap-1 text-sm">
                 <Users className="w-4 h-4" />
                 Teams
               </TabsTrigger>
-              <TabsTrigger value="workflows" className="flex items-center gap-2">
+              <TabsTrigger value="workflows" className="flex items-center gap-1 text-sm">
                 <Workflow className="w-4 h-4" />
                 Workflows
               </TabsTrigger>
-              <TabsTrigger value="enterprise-auth" className="flex items-center gap-2">
+              <TabsTrigger value="enterprise-auth" className="flex items-center gap-1 text-sm">
                 <Shield className="w-4 h-4" />
                 Enterprise
-                <Badge variant="outline" className="text-xs ml-1">Security</Badge>
+                <Badge variant="outline" className="text-xs">Sec</Badge>
               </TabsTrigger>
-
-              <TabsTrigger value="beta-testing" className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Beta Testing
-                <Badge variant="outline" className="text-xs ml-1">New</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="ai-agents" className="flex items-center gap-2">
-                <Brain className="w-4 h-4" />
-                AI Agents
-                <Badge variant="outline" className="text-xs ml-1">E2</Badge>
-              </TabsTrigger>
-
-              <TabsTrigger value="enhanced-analytics" className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Analytics+
-                <Badge variant="outline" className="text-xs ml-1">E4</Badge>
-              </TabsTrigger>
-
-              <TabsTrigger value="integrations" className="flex items-center gap-2">
+              <TabsTrigger value="integrations" className="flex items-center gap-1 text-sm">
                 <Layers className="w-4 h-4" />
                 Marketplace
               </TabsTrigger>
-              <TabsTrigger value="mobile" className="flex items-center gap-2">
+              <TabsTrigger value="enhanced-analytics" className="flex items-center gap-1 text-sm">
+                <TrendingUp className="w-4 h-4" />
+                Analytics+
+                <Badge variant="outline" className="text-xs">E4</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="ai-agents" className="flex items-center gap-1 text-sm">
+                <Brain className="w-4 h-4" />
+                AI Agents
+                <Badge variant="outline" className="text-xs">E2</Badge>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Secondary Navigation Row - Advanced Features */}
+            <TabsList className="grid w-full grid-cols-8 glass neon-border" style={{gridTemplateColumns: 'repeat(8, minmax(0, 1fr))'}}>
+              <TabsTrigger value="beta-testing" className="flex items-center gap-1 text-sm">
+                <BarChart3 className="w-4 h-4" />
+                Beta Testing
+                <Badge variant="outline" className="text-xs">New</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="mobile" className="flex items-center gap-1 text-sm">
                 <Smartphone className="w-4 h-4" />
                 Mobile
               </TabsTrigger>
-              <TabsTrigger value="api-docs" className="flex items-center gap-2">
+              <TabsTrigger value="api-docs" className="flex items-center gap-1 text-sm">
                 <Code className="w-4 h-4" />
                 API Docs
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <TabsTrigger value="analytics" className="flex items-center gap-1 text-sm">
                 <BarChart3 className="w-4 h-4" />
                 Analytics
               </TabsTrigger>
-              <TabsTrigger value="progress" className="flex items-center gap-2">
+              <TabsTrigger value="progress" className="flex items-center gap-1 text-sm">
                 <Target className="w-4 h-4" />
                 Progress
               </TabsTrigger>
-              <TabsTrigger value="config" className="flex items-center gap-2">
+              <TabsTrigger value="config" className="flex items-center gap-1 text-sm">
                 <Settings className="w-4 h-4" />
                 Config
               </TabsTrigger>
-              <TabsTrigger value="knowledge" className="flex items-center gap-2">
+              <TabsTrigger value="knowledge" className="flex items-center gap-1 text-sm">
                 <FileText className="w-4 h-4" />
                 Knowledge
               </TabsTrigger>
+              {/* Empty slot for future expansion */}
+              <div className="flex items-center justify-center text-xs text-gray-500">
+                More
+              </div>
+            </TabsList>
             </TabsList>
 
                 {/* Chat Tab */}
