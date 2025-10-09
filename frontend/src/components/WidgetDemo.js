@@ -744,80 +744,70 @@ const WidgetDemo = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            {/* Primary Navigation Row - Core Features */}
-            <TabsList className="grid w-full grid-cols-8 glass neon-border mb-2" style={{gridTemplateColumns: 'repeat(8, minmax(0, 1fr))'}}>
-              <TabsTrigger value="chat" className="flex items-center gap-1 text-sm">
-                <MessageSquare className="w-4 h-4" />
-                AI Chat
+            <TabsList className="flex flex-wrap w-full glass neon-border p-1" style={{minHeight: '3rem'}}>
+              {/* Core Features */}
+              <TabsTrigger value="chat" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <MessageSquare className="w-3 h-3" />
+                Chat
               </TabsTrigger>
-              <TabsTrigger value="voice" className="flex items-center gap-1 text-sm">
-                <Mic className="w-4 h-4" />
+              <TabsTrigger value="voice" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Mic className="w-3 h-3" />
                 Voice
               </TabsTrigger>
-              <TabsTrigger value="teams" className="flex items-center gap-1 text-sm">
-                <Users className="w-4 h-4" />
+              <TabsTrigger value="teams" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Users className="w-3 h-3" />
                 Teams
               </TabsTrigger>
-              <TabsTrigger value="workflows" className="flex items-center gap-1 text-sm">
-                <Workflow className="w-4 h-4" />
+              <TabsTrigger value="workflows" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Workflow className="w-3 h-3" />
                 Workflows
               </TabsTrigger>
-              <TabsTrigger value="enterprise-auth" className="flex items-center gap-1 text-sm">
-                <Shield className="w-4 h-4" />
+              <TabsTrigger value="enterprise-auth" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Shield className="w-3 h-3" />
                 Enterprise
-                <Badge variant="outline" className="text-xs">Sec</Badge>
               </TabsTrigger>
-              <TabsTrigger value="integrations" className="flex items-center gap-1 text-sm">
-                <Layers className="w-4 h-4" />
+              <TabsTrigger value="integrations" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Layers className="w-3 h-3" />
                 Marketplace
               </TabsTrigger>
-              <TabsTrigger value="enhanced-analytics" className="flex items-center gap-1 text-sm">
-                <TrendingUp className="w-4 h-4" />
+              
+              {/* Advanced Features */}
+              <TabsTrigger value="enhanced-analytics" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <TrendingUp className="w-3 h-3" />
                 Analytics+
-                <Badge variant="outline" className="text-xs">E4</Badge>
               </TabsTrigger>
-              <TabsTrigger value="ai-agents" className="flex items-center gap-1 text-sm">
-                <Brain className="w-4 h-4" />
+              <TabsTrigger value="ai-agents" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Brain className="w-3 h-3" />
                 AI Agents
-                <Badge variant="outline" className="text-xs">E2</Badge>
               </TabsTrigger>
-            </TabsList>
-
-            {/* Secondary Navigation Row - Advanced Features */}
-            <TabsList className="grid w-full grid-cols-8 glass neon-border" style={{gridTemplateColumns: 'repeat(8, minmax(0, 1fr))'}}>
-              <TabsTrigger value="beta-testing" className="flex items-center gap-1 text-sm">
-                <BarChart3 className="w-4 h-4" />
-                Beta Testing
-                <Badge variant="outline" className="text-xs">New</Badge>
+              <TabsTrigger value="beta-testing" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <BarChart3 className="w-3 h-3" />
+                Beta
               </TabsTrigger>
-              <TabsTrigger value="mobile" className="flex items-center gap-1 text-sm">
-                <Smartphone className="w-4 h-4" />
+              <TabsTrigger value="mobile" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Smartphone className="w-3 h-3" />
                 Mobile
               </TabsTrigger>
-              <TabsTrigger value="api-docs" className="flex items-center gap-1 text-sm">
-                <Code className="w-4 h-4" />
-                API Docs
+              <TabsTrigger value="api-docs" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Code className="w-3 h-3" />
+                API
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-1 text-sm">
-                <BarChart3 className="w-4 h-4" />
+              <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <BarChart3 className="w-3 h-3" />
                 Analytics
               </TabsTrigger>
-              <TabsTrigger value="progress" className="flex items-center gap-1 text-sm">
-                <Target className="w-4 h-4" />
+              <TabsTrigger value="progress" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Target className="w-3 h-3" />
                 Progress
               </TabsTrigger>
-              <TabsTrigger value="config" className="flex items-center gap-1 text-sm">
-                <Settings className="w-4 h-4" />
+              <TabsTrigger value="config" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <Settings className="w-3 h-3" />
                 Config
               </TabsTrigger>
-              <TabsTrigger value="knowledge" className="flex items-center gap-1 text-sm">
-                <FileText className="w-4 h-4" />
+              <TabsTrigger value="knowledge" className="flex items-center gap-1 text-xs px-2 py-1 m-0.5">
+                <FileText className="w-3 h-3" />
                 Knowledge
               </TabsTrigger>
-              {/* Empty slot for future expansion */}
-              <div className="flex items-center justify-center text-xs text-gray-500">
-                More
-              </div>
             </TabsList>
             </TabsList>
 
