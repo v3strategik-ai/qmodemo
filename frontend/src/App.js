@@ -91,6 +91,7 @@ function App() {
               <Route path="/widget-demo" element={<WidgetDemo />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<AdminPortal />} />
+              <Route path="/test" element={<ComponentTest />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
