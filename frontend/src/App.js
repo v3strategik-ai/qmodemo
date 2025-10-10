@@ -10,6 +10,7 @@ import WidgetDemo from "./components/WidgetDemo";
 import Dashboard from "./components/Dashboard";
 import AdminPortal from "./components/AdminPortal";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ComponentTest from "./components/ComponentTest";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
