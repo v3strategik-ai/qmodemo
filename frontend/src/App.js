@@ -49,7 +49,19 @@ const AuthProvider = ({ children }) => {
         password,
         role
       });
-      await login(response.data);
+      
+      // Create a proper user object from the registration response
+      const userData = {
+        id: response.data.user_id,
+        username: username,
+        email: email,
+        role: role,
+        access_token: response.data.access_token,
+        token_type: response.data.token_type,
+        expires_in: response.data.expires_in
+      };
+      
+      await login(userData);
       toast.success("Account created successfully!");
       return response.data;
     } catch (error) {
