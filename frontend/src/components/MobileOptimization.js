@@ -27,7 +27,7 @@ import {
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const MobileOptimization = ({ currentUser }) => {
+const MobileOptimization = ({ currentUser = {} }) => {
   const [mobileConfig, setMobileConfig] = useState({
     push_notifications_enabled: true,
     offline_sync_enabled: true,
