@@ -58,7 +58,6 @@ const WidgetDemo = () => {
   const { currentUser, register } = useAuth();
   console.log('✅ useAuth hook successful - currentUser:', !!currentUser, currentUser?.id);
   const [activeTab, setActiveTab] = useState('chat');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   
