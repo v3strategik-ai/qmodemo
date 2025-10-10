@@ -1145,18 +1145,12 @@ const WidgetDemo = () => {
 
             {/* Mobile Optimization Tab */}
             <TabsContent value="mobile" className="mt-6">
-              {/* <MobileOptimization currentUser={currentUser} /> */}
-              <div className="p-6 text-center text-gray-400">
-                Mobile Optimization component temporarily disabled for debugging
-              </div>
+              <MobileOptimization currentUser={currentUser} />
             </TabsContent>
 
             {/* API Documentation Tab */}
             <TabsContent value="api-docs" className="mt-6">
-              {/* <APIDocs currentUser={currentUser} /> */}
-              <div className="p-6 text-center text-gray-400">
-                API Documentation component temporarily disabled for debugging
-              </div>
+              <APIDocs currentUser={currentUser} />
             </TabsContent>
 
             {/* Analytics Tab */}
