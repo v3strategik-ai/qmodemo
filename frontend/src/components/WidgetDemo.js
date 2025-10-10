@@ -702,14 +702,6 @@ const WidgetDemo = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/')}
-              className="text-gray-400 hover:text-white"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
             <div>
               <h1 className="text-2xl font-bold text-gradient">modQ Widget Demo</h1>
               <p className="text-gray-400">Super Intelligent Personal Assistant</p>
