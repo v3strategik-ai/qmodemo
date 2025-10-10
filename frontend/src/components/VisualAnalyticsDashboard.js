@@ -29,7 +29,7 @@ ChartJS.register(
   ArcElement
 );
 
-const VisualAnalyticsDashboard = ({ userConfig, className = "" }) => {
+const VisualAnalyticsDashboard = ({ userConfig = {}, className = "" }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
