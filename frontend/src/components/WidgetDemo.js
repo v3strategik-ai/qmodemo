@@ -639,8 +639,8 @@ const WidgetDemo = () => {
     }
   };
 
-  // Show login form if not logged in or currentUser is not available
-  if (!isLoggedIn || !currentUser) {
+  // Show login form if currentUser is not available
+  if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center relative">
         <div className="circuit-bg" />
