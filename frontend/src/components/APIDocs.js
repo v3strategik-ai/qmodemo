@@ -31,7 +31,7 @@ import {
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const APIDocs = ({ currentUser }) => {
+const APIDocs = ({ currentUser = {} }) => {
   const [apiStats, setApiStats] = useState([]);
   const [developerKeys, setDeveloperKeys] = useState([]);
   const [loading, setLoading] = useState(true);
