@@ -19,7 +19,7 @@ import {
   Clock
 } from 'lucide-react';
 
-const ProgressTracker = ({ userConfig, chatMessages, knowledgeItems, className = "" }) => {
+const ProgressTracker = ({ userConfig = {}, chatMessages = [], knowledgeItems = [], className = "" }) => {
   const [stats, setStats] = useState({});
   const [weeklyGoals, setWeeklyGoals] = useState([]);
   const [achievements, setAchievements] = useState([]);
