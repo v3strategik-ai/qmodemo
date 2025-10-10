@@ -356,22 +356,7 @@ const WidgetDemo = () => {
       setLoading(true);
       console.log('Attempting registration with:', { username, email });
       const response = await register(username, email, password, 'employee');
-      
-      // Ensure both authentication state and user are set
-      setIsLoggedIn(true);
-      
-      // If register function doesn't set currentUser, we need to manually set it
-      if (response && response.user_id) {
-        // Create a user object from the response
-        const user = {
-          id: response.user_id,
-          username: username,
-          email: email,
-          role: 'employee'
-        };
-        console.log('Setting currentUser:', user);
-      }
-      
+      console.log('Registration response:', response);
       console.log('Registration successful');
       toast.success('Welcome to modQ Widget Demo!');
     } catch (error) {
